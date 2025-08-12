@@ -55,7 +55,7 @@ def fill_pdf_document(input_pdf_path, output_dir_path, data_to_fill):
         output.add_page(page)
 
         # Salvar o PDF preenchido
-        output_pdf_path_full = os.path.join(output_dir_path, "empresa_preenchida.pdf")
+        output_pdf_path_full = os.path.join(output_dir_path, "abertura de feriado.pdf")
         with open(output_pdf_path_full, "wb") as outputStream:
             output.write(outputStream)
 
