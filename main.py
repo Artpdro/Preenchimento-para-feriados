@@ -1,5 +1,6 @@
 import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
+import sqlite3
 import os
 
 # Importar a função de preenchimento e o mapeamento
@@ -10,8 +11,8 @@ class PDFillerApp:
     def __init__(self, master):
         self.master = master
         master.title("Preencher solicitação de abertura")
-        master.geometry("1000x400") # Definindo o tamanho da janela
-        master.resizable(False, False) # Impedir redimensionamento
+        master.geometry("1200x800") # Aumentando o tamanho da janela para acomodar a tabela
+        master.resizable(True, True) # Permitir redimensionamento
         master.configure(bg="#F0F0F0") # Fundo cinza claro para a janela principal
 
         # Cores baseadas na imagem de referência do Sindnorte
@@ -67,6 +68,17 @@ class PDFillerApp:
                         borderwidth=1,
                         relief="solid")
 
+        # Estilo para Treeview (tabela)
+        style.configure("Treeview", 
+                        font=("Arial", 9),
+                        background=self.colors['white'],
+                        foreground=self.colors['text_dark'],
+                        fieldbackground=self.colors['white'])
+        style.configure("Treeview.Heading", 
+                        font=("Arial", 10, "bold"),
+                        background=self.colors['primary_blue'],
+                        foreground=self.colors['white'])
+
         # pdf_fields agora é importado de pdf_mapping.py
         self.pdf_fields = pdf_fields
 
@@ -79,6 +91,9 @@ class PDFillerApp:
 
         # Widgets da interface
         self.create_widgets()
+        
+        # Carregar dados das empresas
+        self.load_companies()
 
     def create_widgets(self):
         # Cabeçalho (simples, apenas para cor)
@@ -98,7 +113,7 @@ class PDFillerApp:
 
         # Frame para os campos de entrada
         input_frame = ttk.LabelFrame(main_content_frame, text="Dados para Preenchimento")
-        input_frame.pack(padx=10, pady=10, fill="x", expand=True)
+        input_frame.pack(padx=10, pady=10, fill="x")
 
         # Configurar grid para centralizar e expandir
         input_frame.columnconfigure(1, weight=1)
@@ -121,7 +136,7 @@ class PDFillerApp:
 
         # Frame para seleção de arquivos
         file_frame = ttk.LabelFrame(main_content_frame, text="Seleção de Arquivos")
-        file_frame.pack(padx=10, pady=10, fill="x", expand=True)
+        file_frame.pack(padx=10, pady=10, fill="x")
         file_frame.columnconfigure(1, weight=1)
 
         # Diretório de Saída
@@ -132,6 +147,163 @@ class PDFillerApp:
         # Botão de Preenchimento
         fill_button = ttk.Button(main_content_frame, text="Preencher PDF", command=self.fill_pdf)
         fill_button.pack(pady=10)
+
+        # Frame para a tabela de empresas
+        table_frame = ttk.LabelFrame(main_content_frame, text="Empresas Cadastradas")
+        table_frame.pack(padx=10, pady=10, fill="both", expand=True)
+
+        # Criar a tabela (Treeview)
+        columns = ("CNPJ", "Razão Social", "Nome Fantasia", "Município", "UF", "Situação")
+        self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=15)
+        
+        # Configurar cabeçalhos
+        for col in columns:
+            self.tree.heading(col, text=col)
+            if col == "CNPJ":
+                self.tree.column(col, width=120, minwidth=100)
+            elif col == "Razão Social":
+                self.tree.column(col, width=200, minwidth=150)
+            elif col == "Nome Fantasia":
+                self.tree.column(col, width=200, minwidth=150)
+            elif col == "Município":
+                self.tree.column(col, width=150, minwidth=100)
+            elif col == "UF":
+                self.tree.column(col, width=50, minwidth=40)
+            elif col == "Situação":
+                self.tree.column(col, width=100, minwidth=80)
+
+        # Scrollbars para a tabela
+        v_scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
+        h_scrollbar = ttk.Scrollbar(table_frame, orient="horizontal", command=self.tree.xview)
+        self.tree.configure(yscrollcommand=v_scrollbar.set, xscrollcommand=h_scrollbar.set)
+
+        # Posicionar tabela e scrollbars
+        self.tree.grid(row=0, column=0, sticky="nsew")
+        v_scrollbar.grid(row=0, column=1, sticky="ns")
+        h_scrollbar.grid(row=1, column=0, sticky="ew")
+
+        # Configurar expansão do grid
+        table_frame.grid_rowconfigure(0, weight=1)
+        table_frame.grid_columnconfigure(0, weight=1)
+
+        # Bind para seleção de linha
+        self.tree.bind("<<TreeviewSelect>>", self.on_company_select)
+
+        # Frame para filtros
+        filter_frame = ttk.Frame(table_frame)
+        filter_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
+        
+        ttk.Label(filter_frame, text="Filtrar por nome:").pack(side="left", padx=5)
+        self.filter_var = tk.StringVar()
+        self.filter_var.trace("w", self.filter_companies)
+        filter_entry = ttk.Entry(filter_frame, textvariable=self.filter_var, width=30)
+        filter_entry.pack(side="left", padx=5)
+
+    def load_companies(self):
+        """Carrega as empresas do banco de dados na tabela"""
+        try:
+            conn = sqlite3.connect('empresas.db')
+            cursor = conn.cursor()
+            
+            cursor.execute("""
+                SELECT cnpj, razao_social, nome_fantasia, municipio, uf, situacao 
+                FROM empresas 
+                ORDER BY razao_social
+            """)
+            
+            self.companies_data = cursor.fetchall()
+            self.display_companies(self.companies_data)
+            
+            conn.close()
+            
+        except sqlite3.Error as e:
+            messagebox.showerror("Erro", f"Erro ao carregar empresas: {e}")
+
+    def display_companies(self, companies):
+        """Exibe as empresas na tabela"""
+        # Limpar tabela
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        
+        # Adicionar empresas
+        for company in companies:
+            # Formatar CNPJ se for numérico
+            cnpj = str(company[0])
+            if cnpj.replace('.', '').isdigit():
+                cnpj = cnpj.replace('.0', '')  # Remove .0 se existir
+            
+            self.tree.insert("", "end", values=(
+                cnpj,
+                company[1] or "",  # razao_social
+                company[2] or "",  # nome_fantasia
+                company[3] or "",  # municipio
+                company[4] or "",  # uf
+                company[5] or ""   # situacao
+            ))
+
+    def filter_companies(self, *args):
+        """Filtra as empresas baseado no texto digitado"""
+        filter_text = self.filter_var.get().lower()
+        
+        if not filter_text:
+            self.display_companies(self.companies_data)
+            return
+        
+        filtered_companies = []
+        for company in self.companies_data:
+            # Buscar em razão social e nome fantasia
+            razao_social = (company[1] or "").lower()
+            nome_fantasia = (company[2] or "").lower()
+            
+            if filter_text in razao_social or filter_text in nome_fantasia:
+                filtered_companies.append(company)
+        
+        self.display_companies(filtered_companies)
+
+    def on_company_select(self, event):
+        """Preenche os campos quando uma empresa é selecionada"""
+        selection = self.tree.selection()
+        if selection:
+            item = self.tree.item(selection[0])
+            values = item['values']
+            
+            # Preencher campos
+            self.cnpj_var.set(values[0])
+            self.nome_fantasia_var.set(values[2] if values[2] else values[1])  # Nome fantasia ou razão social
+            
+            # Buscar endereço completo no banco
+            try:
+                conn = sqlite3.connect('empresas.db')
+                cursor = conn.cursor()
+                
+                cursor.execute("""
+                    SELECT endereco, complemento, bairro, municipio, uf, cep
+                    FROM empresas 
+                    WHERE cnpj = ?
+                """, (values[0],))
+                
+                result = cursor.fetchone()
+                if result:
+                    endereco_completo = []
+                    if result[0]:  # endereco
+                        endereco_completo.append(result[0])
+                    if result[1]:  # complemento
+                        endereco_completo.append(result[1])
+                    if result[2]:  # bairro
+                        endereco_completo.append(result[2])
+                    if result[3]:  # municipio
+                        endereco_completo.append(result[3])
+                    if result[4]:  # uf
+                        endereco_completo.append(result[4])
+                    if result[5]:  # cep
+                        endereco_completo.append(f"CEP: {result[5]}")
+                    
+                    self.endereco_var.set(", ".join(endereco_completo))
+                
+                conn.close()
+                
+            except sqlite3.Error as e:
+                print(f"Erro ao buscar endereço: {e}")
 
     def select_output_dir(self):
         dir_path = filedialog.askdirectory()
@@ -165,5 +337,4 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = PDFillerApp(root)
     root.mainloop()
-
 
