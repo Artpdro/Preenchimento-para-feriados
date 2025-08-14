@@ -84,7 +84,7 @@ class PDFillerApp:
 
         # Variáveis para armazenar os dados
         self.cnpj_var = tk.StringVar()
-        self.nome_fantasia_var = tk.StringVar()
+        self.razao_social_var = tk.StringVar()
         self.endereco_var = tk.StringVar()
         self.data_feriado_var = tk.StringVar()
         self.output_dir_path = tk.StringVar()
@@ -123,8 +123,8 @@ class PDFillerApp:
         ttk.Entry(input_frame, textvariable=self.cnpj_var, width=60).grid(row=0, column=1, padx=10, pady=5, sticky="ew")
 
         # Nome da Empresa
-        ttk.Label(input_frame, text="Nome da Empresa:").grid(row=1, column=0, sticky="w", padx=10, pady=5)
-        ttk.Entry(input_frame, textvariable=self.nome_fantasia_var, width=60).grid(row=1, column=1, padx=10, pady=5, sticky="ew")
+        ttk.Label(input_frame, text="Razão Social:").grid(row=1, column=0, sticky="w", padx=10, pady=5)
+        ttk.Entry(input_frame, textvariable=self.razao_social_var, width=60).grid(row=1, column=1, padx=10, pady=5, sticky="ew")
 
         # Endereço
         ttk.Label(input_frame, text="Endereço:").grid(row=2, column=0, sticky="w", padx=10, pady=5)
@@ -153,7 +153,7 @@ class PDFillerApp:
         table_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
         # Criar a tabela (Treeview)
-        columns = ("CNPJ", "Razão Social", "Nome Fantasia", "Município", "UF", "Situação")
+        columns = ("CNPJ", "Razão Social", "Endereço", "Município", "UF", "Situação")
         self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=15)
         
         # Configurar cabeçalhos
@@ -163,10 +163,10 @@ class PDFillerApp:
                 self.tree.column(col, width=120, minwidth=100)
             elif col == "Razão Social":
                 self.tree.column(col, width=200, minwidth=150)
-            elif col == "Nome Fantasia":
-                self.tree.column(col, width=200, minwidth=150)
+            elif col == "Endereço":
+                self.tree.column(col, width=250, minwidth=200)
             elif col == "Município":
-                self.tree.column(col, width=150, minwidth=100)
+                self.tree.column(col, width=150, minwidth=100)           
             elif col == "UF":
                 self.tree.column(col, width=50, minwidth=40)
             elif col == "Situação":
@@ -206,7 +206,7 @@ class PDFillerApp:
             cursor = conn.cursor()
             
             cursor.execute("""
-                SELECT cnpj, razao_social, nome_fantasia, municipio, uf, situacao 
+                SELECT cnpj, razao_social, nome_fantasia, endereco, municipio, uf, situacao 
                 FROM empresas 
                 ORDER BY razao_social
             """)
@@ -235,10 +235,10 @@ class PDFillerApp:
             self.tree.insert("", "end", values=(
                 cnpj,
                 company[1] or "",  # razao_social
-                company[2] or "",  # nome_fantasia
-                company[3] or "",  # municipio
-                company[4] or "",  # uf
-                company[5] or ""   # situacao
+                company[3] or "",  # endereco
+                company[4] or "",  # municipio
+                company[5] or "",  # uf
+                company[6] or ""   # situacao
             ))
 
     def filter_companies(self, *args):
@@ -269,41 +269,45 @@ class PDFillerApp:
             
             # Preencher campos
             self.cnpj_var.set(values[0])
-            self.nome_fantasia_var.set(values[2] if values[2] else values[1])  # Nome fantasia ou razão social
+            self.razao_social_var.set(values[1])  # Razão social
             
-            # Buscar endereço completo no banco
-            try:
-                conn = sqlite3.connect('empresas.db')
-                cursor = conn.cursor()
-                
-                cursor.execute("""
-                    SELECT endereco, complemento, bairro, municipio, uf, cep
-                    FROM empresas 
-                    WHERE cnpj = ?
-                """, (values[0],))
-                
-                result = cursor.fetchone()
-                if result:
-                    endereco_completo = []
-                    if result[0]:  # endereco
-                        endereco_completo.append(result[0])
-                    if result[1]:  # complemento
-                        endereco_completo.append(result[1])
-                    if result[2]:  # bairro
-                        endereco_completo.append(result[2])
-                    if result[3]:  # municipio
-                        endereco_completo.append(result[3])
-                    if result[4]:  # uf
-                        endereco_completo.append(result[4])
-                    if result[5]:  # cep
-                        endereco_completo.append(f"CEP: {result[5]}")
+            # Preencher endereço diretamente da tabela se disponível
+            if values[3]:  # Se há endereço na tabela
+                self.endereco_var.set(values[3])
+            else:
+                # Buscar endereço completo no banco se não estiver na tabela
+                try:
+                    conn = sqlite3.connect('empresas.db')
+                    cursor = conn.cursor()
                     
-                    self.endereco_var.set(", ".join(endereco_completo))
-                
-                conn.close()
-                
-            except sqlite3.Error as e:
-                print(f"Erro ao buscar endereço: {e}")
+                    cursor.execute("""
+                        SELECT endereco, complemento, bairro, municipio, uf, cep
+                        FROM empresas 
+                        WHERE cnpj = ?
+                    """, (values[0],))
+                    
+                    result = cursor.fetchone()
+                    if result:
+                        endereco_completo = []
+                        if result[0]:  # endereco
+                            endereco_completo.append(result[0])
+                        if result[1]:  # complemento
+                            endereco_completo.append(result[1])
+                        if result[2]:  # bairro
+                            endereco_completo.append(result[2])
+                        if result[3]:  # municipio
+                            endereco_completo.append(result[3])
+                        if result[4]:  # uf
+                            endereco_completo.append(result[4])
+                        if result[5]:  # cep
+                            endereco_completo.append(f"CEP: {result[5]}")
+                        
+                        self.endereco_var.set(", ".join(endereco_completo))
+                    
+                    conn.close()
+                    
+                except sqlite3.Error as e:
+                    print(f"Erro ao buscar endereço: {e}")
 
     def select_output_dir(self):
         dir_path = filedialog.askdirectory()
@@ -320,7 +324,7 @@ class PDFillerApp:
 
         data_to_fill = {
             'cnpj': self.cnpj_var.get(),
-            'nome_fantasia': self.nome_fantasia_var.get(),
+            'razao_social': self.razao_social_var.get(),
             'endereco': self.endereco_var.get(),
             'data': self.data_feriado_var.get(),
         }
