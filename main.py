@@ -123,7 +123,7 @@ class PDFillerApp:
         ttk.Entry(input_frame, textvariable=self.cnpj_var, width=60).grid(row=0, column=1, padx=10, pady=5, sticky="ew")
 
         # Nome da Empresa
-        ttk.Label(input_frame, text="Razão Social:").grid(row=1, column=0, sticky="w", padx=10, pady=5)
+        ttk.Label(input_frame, text="Nome da Empresa:").grid(row=1, column=0, sticky="w", padx=10, pady=5)        
         ttk.Entry(input_frame, textvariable=self.razao_social_var, width=60).grid(row=1, column=1, padx=10, pady=5, sticky="ew")
 
         # Endereço
@@ -153,7 +153,7 @@ class PDFillerApp:
         table_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
         # Criar a tabela (Treeview)
-        columns = ("CNPJ", "Razão Social", "Endereço", "Município", "UF", "Situação")
+        columns = ("CNPJ", "Nome da Empresa", "Nome Fantasia", "Endereço", "Município", "Situação")
         self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=15)
         
         # Configurar cabeçalhos
@@ -161,16 +161,14 @@ class PDFillerApp:
             self.tree.heading(col, text=col)
             if col == "CNPJ":
                 self.tree.column(col, width=120, minwidth=100)
-            elif col == "Razão Social":
-                self.tree.column(col, width=200, minwidth=150)
+            elif col == "Nome da Empresa":
+                self.tree.column(col, width=150, minwidth=120)
+            elif col == "Nome Fantasia":
+                self.tree.column(col, width=150, minwidth=120)
             elif col == "Endereço":
                 self.tree.column(col, width=250, minwidth=200)
             elif col == "Município":
-                self.tree.column(col, width=150, minwidth=100)           
-            elif col == "UF":
-                self.tree.column(col, width=50, minwidth=40)
-            elif col == "Situação":
-                self.tree.column(col, width=100, minwidth=80)
+                self.tree.column(col, width=150, minwidth=100)
 
         # Scrollbars para a tabela
         v_scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
@@ -206,7 +204,7 @@ class PDFillerApp:
             cursor = conn.cursor()
             
             cursor.execute("""
-                SELECT cnpj, razao_social, nome_fantasia, endereco, municipio, uf, situacao 
+                SELECT cnpj, razao_social, nome_fantasia, endereco, municipio, situacao 
                 FROM empresas 
                 ORDER BY razao_social
             """)
@@ -235,10 +233,10 @@ class PDFillerApp:
             self.tree.insert("", "end", values=(
                 cnpj,
                 company[1] or "",  # razao_social
+                company[2] or "",  # nome_fantasia
                 company[3] or "",  # endereco
                 company[4] or "",  # municipio
-                company[5] or "",  # uf
-                company[6] or ""   # situacao
+                company[5] or ""   # situacao
             ))
 
     def filter_companies(self, *args):
@@ -269,8 +267,7 @@ class PDFillerApp:
             
             # Preencher campos
             self.cnpj_var.set(values[0])
-            self.razao_social_var.set(values[1])  # Razão social
-            
+            self.razao_social_var.set(values[1])  # Nome da Empresa (Razão Social)            
             # Preencher endereço diretamente da tabela se disponível
             if values[3]:  # Se há endereço na tabela
                 self.endereco_var.set(values[3])
@@ -281,7 +278,7 @@ class PDFillerApp:
                     cursor = conn.cursor()
                     
                     cursor.execute("""
-                        SELECT endereco, complemento, bairro, municipio, uf, cep
+                        SELECT endereco, complemento, bairro, municipio, cep
                         FROM empresas 
                         WHERE cnpj = ?
                     """, (values[0],))
@@ -297,10 +294,8 @@ class PDFillerApp:
                             endereco_completo.append(result[2])
                         if result[3]:  # municipio
                             endereco_completo.append(result[3])
-                        if result[4]:  # uf
-                            endereco_completo.append(result[4])
-                        if result[5]:  # cep
-                            endereco_completo.append(f"CEP: {result[5]}")
+                        if result[4]:  # cep
+                            endereco_completo.append(f"CEP: {result[4]}")
                         
                         self.endereco_var.set(", ".join(endereco_completo))
                     
