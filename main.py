@@ -87,6 +87,8 @@ class PDFillerApp:
         self.razao_social_var = tk.StringVar()
         self.endereco_var = tk.StringVar()
         self.data_feriado_var = tk.StringVar()
+        self.filter_cnpj_var = tk.StringVar()
+        self.filter_razao_social_var = tk.StringVar()
         self.output_dir_path = tk.StringVar()
 
         # Widgets da interface
@@ -191,12 +193,17 @@ class PDFillerApp:
         filter_frame = ttk.Frame(table_frame)
         filter_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
         
-        ttk.Label(filter_frame, text="Filtrar por nome:").pack(side="left", padx=5)
-        self.filter_var = tk.StringVar()
-        self.filter_var.trace("w", self.filter_companies)
-        filter_entry = ttk.Entry(filter_frame, textvariable=self.filter_var, width=30)
-        filter_entry.pack(side="left", padx=5)
+        ttk.Label(filter_frame, text="Filtrar por CNPJ:").pack(side="left", padx=5)
+        self.filter_cnpj_var = tk.StringVar()
+        self.filter_cnpj_var.trace("w", self.filter_companies)
+        filter_cnpj_entry = ttk.Entry(filter_frame, textvariable=self.filter_cnpj_var, width=20)
+        filter_cnpj_entry.pack(side="left", padx=5)
 
+        ttk.Label(filter_frame, text="Filtrar por Nome/Fantasia:").pack(side="left", padx=5)
+        self.filter_razao_social_var = tk.StringVar()
+        self.filter_razao_social_var.trace("w", self.filter_companies)
+        filter_razao_social_entry = ttk.Entry(filter_frame, textvariable=self.filter_razao_social_var, width=30)
+        filter_razao_social_entry.pack(side="left", padx=5)
     def load_companies(self):
         """Carrega as empresas do banco de dados na tabela"""
         try:
@@ -241,23 +248,26 @@ class PDFillerApp:
 
     def filter_companies(self, *args):
         """Filtra as empresas baseado no texto digitado"""
-        filter_text = self.filter_var.get().lower()
+        filter_cnpj_text = self.filter_cnpj_var.get().lower()
+        filter_razao_social_text = self.filter_razao_social_var.get().lower()
         
-        if not filter_text:
+        if not filter_cnpj_text and not filter_razao_social_text:
             self.display_companies(self.companies_data)
             return
         
         filtered_companies = []
         for company in self.companies_data:
-            # Buscar em razão social e nome fantasia
+            cnpj = str(company[0]).lower()
             razao_social = (company[1] or "").lower()
             nome_fantasia = (company[2] or "").lower()
             
-            if filter_text in razao_social or filter_text in nome_fantasia:
+            cnpj_match = filter_cnpj_text in cnpj
+            name_match = filter_razao_social_text in razao_social or filter_razao_social_text in nome_fantasia
+            
+            if (not filter_cnpj_text or cnpj_match) and (not filter_razao_social_text or name_match):
                 filtered_companies.append(company)
         
         self.display_companies(filtered_companies)
-
     def on_company_select(self, event):
         """Preenche os campos quando uma empresa é selecionada"""
         selection = self.tree.selection()
@@ -322,6 +332,7 @@ class PDFillerApp:
             'razao_social': self.razao_social_var.get(),
             'endereco': self.endereco_var.get(),
             'data': self.data_feriado_var.get(),
+            'nome_fantasia': self.tree.item(self.tree.selection()[0])['values'][2],
         }
 
         # Chamar a função de preenchimento do módulo pdf_filler
