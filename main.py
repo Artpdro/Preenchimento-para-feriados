@@ -11,7 +11,7 @@ class PDFillerApp:
     def __init__(self, master):
         self.master = master
         master.title("Preencher solicitação de abertura")
-        master.geometry("1200x800") # Aumentando o tamanho da janela para acomodar a tabela
+        master.geometry("1200x900") # Aumentando o tamanho da janela para acomodar a nova funcionalidade
         master.resizable(True, True) # Permitir redimensionamento
         master.configure(bg="#F0F0F0") # Fundo cinza claro para a janela principal
 
@@ -57,6 +57,17 @@ class PDFillerApp:
                   background=[('active', self.colors['light_blue'])],
                   foreground=[('active', self.colors['white'])])
 
+        # Estilo especial para o botão de pesquisa
+        style.configure("Search.TButton", 
+                        font=("Arial", 10, "bold"), 
+                        padding=5, 
+                        background='#28a745', 
+                        foreground=self.colors['white'],
+                        relief="flat")
+        style.map("Search.TButton", 
+                  background=[('active', '#218838')],
+                  foreground=[('active', self.colors['white'])])
+
         # Estilo para LabelFrames (molduras)
         style.configure("TLabelframe.Label", 
                         font=("Arial", 12, "bold"), 
@@ -90,6 +101,9 @@ class PDFillerApp:
         self.filter_cnpj_var = tk.StringVar()
         self.filter_razao_social_var = tk.StringVar()
         self.output_dir_path = tk.StringVar()
+        
+        # Variáveis para pesquisa
+        self.search_term_var = tk.StringVar()
 
         # Widgets da interface
         self.create_widgets()
@@ -112,6 +126,24 @@ class PDFillerApp:
         # Frame principal para o conteúdo
         main_content_frame = tk.Frame(self.master, bg=self.colors["light_gray"])
         main_content_frame.pack(padx=10, pady=10, fill="both", expand=True)
+
+        # NOVO: Frame para pesquisa de empresas
+        search_frame = ttk.LabelFrame(main_content_frame, text="Pesquisar Empresa")
+        search_frame.pack(padx=10, pady=10, fill="x")
+        search_frame.columnconfigure(1, weight=1)
+
+        # Campo de pesquisa
+        ttk.Label(search_frame, text="CNPJ ou Razão Social:").grid(row=0, column=0, sticky="w", padx=10, pady=5)
+        search_entry = ttk.Entry(search_frame, textvariable=self.search_term_var, width=50)
+        search_entry.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
+        
+        # Botão de pesquisa
+        search_button = ttk.Button(search_frame, text="Pesquisar e Preencher", 
+                                 command=self.search_and_fill_company, style="Search.TButton")
+        search_button.grid(row=0, column=2, padx=10, pady=5)
+
+        # Bind Enter key para pesquisa
+        search_entry.bind('<Return>', lambda event: self.search_and_fill_company())
 
         # Frame para os campos de entrada
         input_frame = ttk.LabelFrame(main_content_frame, text="Dados para Preenchimento")
@@ -204,6 +236,108 @@ class PDFillerApp:
         self.filter_razao_social_var.trace("w", self.filter_companies)
         filter_razao_social_entry = ttk.Entry(filter_frame, textvariable=self.filter_razao_social_var, width=30)
         filter_razao_social_entry.pack(side="left", padx=5)
+
+    def search_and_fill_company(self):
+        """Nova função para pesquisar empresa e preencher campos automaticamente"""
+        search_term = self.search_term_var.get().strip()
+        
+        if not search_term:
+            messagebox.showwarning("Aviso", "Por favor, digite um CNPJ ou razão social para pesquisar.")
+            return
+        
+        try:
+            conn = sqlite3.connect('empresas.db')
+            cursor = conn.cursor()
+            
+            # Remover caracteres especiais do CNPJ se for numérico
+            search_term_clean = ''.join(filter(str.isdigit, search_term))
+            
+            # Pesquisar por CNPJ (exato) ou razão social/nome fantasia (parcial)
+            cursor.execute("""
+                SELECT cnpj, razao_social, nome_fantasia, endereco, complemento, 
+                       bairro, municipio, cep, uf, telefone, email
+                FROM empresas 
+                WHERE REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') LIKE ? 
+                   OR UPPER(razao_social) LIKE UPPER(?) 
+                   OR UPPER(nome_fantasia) LIKE UPPER(?)
+                ORDER BY 
+                    CASE 
+                        WHEN REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') = ? THEN 1
+                        WHEN UPPER(razao_social) = UPPER(?) THEN 2
+                        WHEN UPPER(nome_fantasia) = UPPER(?) THEN 3
+                        ELSE 4
+                    END
+                LIMIT 1
+            """, (f'%{search_term_clean}%', f'%{search_term}%', f'%{search_term}%', 
+                  search_term_clean, search_term, search_term))
+            
+            result = cursor.fetchone()
+            
+            if result:
+                # Preencher os campos com os dados encontrados
+                cnpj = str(result[0]).replace('.0', '') if result[0] else ''
+                razao_social = result[1] or ''
+                nome_fantasia = result[2] or ''
+                endereco = result[3] or ''
+                complemento = result[4] or ''
+                bairro = result[5] or ''
+                municipio = result[6] or ''
+                cep = result[7] or ''
+                uf = result[8] or ''
+                telefone = result[9] or ''
+                email = result[10] or ''
+                
+                # Montar endereço completo
+                endereco_completo = []
+                if endereco:
+                    endereco_completo.append(endereco)
+                if complemento:
+                    endereco_completo.append(complemento)
+                if bairro:
+                    endereco_completo.append(bairro)
+                if municipio:
+                    endereco_completo.append(municipio)
+                if uf:
+                    endereco_completo.append(uf)
+                if cep:
+                    endereco_completo.append(f"CEP: {cep}")
+                
+                # Preencher os campos da interface
+                self.cnpj_var.set(cnpj)
+                self.razao_social_var.set(razao_social)
+                self.endereco_var.set(", ".join(endereco_completo))
+                
+                # Limpar campo de pesquisa
+                self.search_term_var.set("")
+                
+                # Mostrar mensagem de sucesso
+                messagebox.showinfo("Sucesso", f"Empresa encontrada: {razao_social}")
+                
+                # Destacar a empresa na tabela se estiver visível
+                self.highlight_company_in_table(cnpj)
+                
+            else:
+                messagebox.showwarning("Não encontrado", 
+                                     f"Nenhuma empresa encontrada com o termo: {search_term}")
+            
+            conn.close()
+            
+        except sqlite3.Error as e:
+            messagebox.showerror("Erro", f"Erro ao pesquisar empresa: {e}")
+
+    def highlight_company_in_table(self, cnpj):
+        """Destaca a empresa na tabela se ela estiver visível"""
+        try:
+            for item in self.tree.get_children():
+                values = self.tree.item(item)['values']
+                if values and str(values[0]) == cnpj:
+                    self.tree.selection_set(item)
+                    self.tree.focus(item)
+                    self.tree.see(item)
+                    break
+        except Exception as e:
+            print(f"Erro ao destacar empresa na tabela: {e}")
+
     def load_companies(self):
         """Carrega as empresas do banco de dados na tabela"""
         try:
@@ -268,6 +402,7 @@ class PDFillerApp:
                 filtered_companies.append(company)
         
         self.display_companies(filtered_companies)
+
     def on_company_select(self, event):
         """Preenche os campos quando uma empresa é selecionada"""
         selection = self.tree.selection()
@@ -327,12 +462,20 @@ class PDFillerApp:
             messagebox.showerror("Erro", "Por favor, selecione o diretório de saída e certifique-se que o PDF de entrada está disponível.")
             return
 
+        # Verificar se há uma empresa selecionada na tabela para obter o nome fantasia
+        nome_fantasia = ""
+        selection = self.tree.selection()
+        if selection:
+            item = self.tree.item(selection[0])
+            values = item['values']
+            nome_fantasia = values[2] if len(values) > 2 else ""
+
         data_to_fill = {
             'cnpj': self.cnpj_var.get(),
             'razao_social': self.razao_social_var.get(),
             'endereco': self.endereco_var.get(),
             'data': self.data_feriado_var.get(),
-            'nome_fantasia': self.tree.item(self.tree.selection()[0])['values'][2],
+            'nome_fantasia': nome_fantasia,
         }
 
         # Chamar a função de preenchimento do módulo pdf_filler
