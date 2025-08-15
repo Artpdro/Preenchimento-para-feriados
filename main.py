@@ -6,6 +6,7 @@ import os
 # Importar a função de preenchimento e o mapeamento
 from pdf_filler import fill_pdf_document
 from pdf_mapping import pdf_fields
+from cnpj_formatter import format_cnpj, validate_cnpj_format, clean_cnpj
 
 class PDFillerApp:
     def __init__(self, master):
@@ -157,7 +158,11 @@ class PDFillerApp:
 
         # CNPJ
         ttk.Label(input_frame, text="CNPJ:").grid(row=0, column=0, sticky="w", padx=10, pady=5)
-        ttk.Entry(input_frame, textvariable=self.cnpj_var, width=60).grid(row=0, column=1, padx=10, pady=5, sticky="ew")
+        self.cnpj_entry = ttk.Entry(input_frame, textvariable=self.cnpj_var, width=60)
+        self.cnpj_entry.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
+        # Bind para formatação automática do CNPJ
+        self.cnpj_entry.bind('<KeyRelease>', self.format_cnpj_on_type)
+        self.cnpj_entry.bind('<FocusOut>', self.validate_cnpj_on_focus_out)
 
         # Nome da Empresa
         ttk.Label(input_frame, text="Nome da Empresa:").grid(row=1, column=0, sticky="w", padx=10, pady=5)        
@@ -279,6 +284,9 @@ class PDFillerApp:
             if result:
                 # Preencher os campos com os dados encontrados
                 cnpj = str(result[0]).replace('.0', '') if result[0] else ''
+                # Formatar o CNPJ no padrão X.XXX.XXX/YYYY-ZZ
+                cnpj_formatted = format_cnpj(cnpj) if cnpj else ''
+                
                 razao_social = result[1] or ''
                 nome_fantasia = result[2] or ''
                 endereco = result[3] or ''
@@ -303,7 +311,7 @@ class PDFillerApp:
                     endereco_completo.append(f"CEP: {cep}")
                 
                 # Preencher os campos da interface
-                self.cnpj_var.set(cnpj)
+                self.cnpj_var.set(cnpj_formatted)
                 self.razao_social_var.set(razao_social)
                 self.endereco_var.set(endereco)
                 self.complemento_var.set(complemento)
@@ -317,7 +325,7 @@ class PDFillerApp:
                 messagebox.showinfo("Sucesso", f"Empresa encontrada: {razao_social}")
                 
                 # Destacar a empresa na tabela se estiver visível
-                self.highlight_company_in_table(cnpj)
+                self.highlight_company_in_table(cnpj_formatted)
                 
             else:
                 messagebox.showwarning("Não encontrado", 
@@ -413,8 +421,12 @@ class PDFillerApp:
             item = self.tree.item(selection[0])
             values = item['values']
             
+            # Formatar o CNPJ no padrão X.XXX.XXX/YYYY-ZZ
+            cnpj_raw = str(values[0])
+            cnpj_formatted = format_cnpj(cnpj_raw) if cnpj_raw else ''
+            
             # Preencher campos
-            self.cnpj_var.set(values[0])
+            self.cnpj_var.set(cnpj_formatted)
             self.razao_social_var.set(values[1])  # Nome da Empresa (Razão Social)            
             # Preencher endereço diretamente da tabela se disponível
             if values[3]:  # Se há endereço na tabela
@@ -491,6 +503,54 @@ class PDFillerApp:
             messagebox.showinfo("Sucesso", f"PDF preenchido e salvo em: {filled_pdf_path}")
         else:
             messagebox.showerror("Erro", "Ocorreu um erro ao preencher o PDF. Verifique o console para mais detalhes.")
+
+    def format_cnpj_on_type(self, event):
+        """Formata o CNPJ automaticamente enquanto o usuário digita"""
+        current_text = self.cnpj_var.get()
+        
+        # Remove caracteres não numéricos
+        numbers_only = ''.join(filter(str.isdigit, current_text))
+        
+        # Limita a 14 dígitos
+        if len(numbers_only) > 14:
+            numbers_only = numbers_only[:14]
+        
+        # Aplica formatação progressiva
+        formatted = ""
+        if len(numbers_only) >= 1:
+            formatted = numbers_only[0]
+        if len(numbers_only) >= 2:
+            formatted += "." + numbers_only[1:4]
+        if len(numbers_only) >= 5:
+            formatted += "." + numbers_only[4:7]
+        if len(numbers_only) >= 8:
+            formatted += "/" + numbers_only[7:11]
+        if len(numbers_only) >= 12:
+            formatted += "-" + numbers_only[11:13]
+        
+        # Atualiza o campo apenas se mudou
+        if formatted != current_text:
+            cursor_pos = self.cnpj_entry.index(tk.INSERT)
+            self.cnpj_var.set(formatted)
+            # Tenta manter a posição do cursor
+            try:
+                self.cnpj_entry.icursor(min(cursor_pos, len(formatted)))
+            except:
+                pass
+
+    def validate_cnpj_on_focus_out(self, event):
+        """Valida o CNPJ quando o campo perde o foco"""
+        cnpj_text = self.cnpj_var.get().strip()
+        
+        if cnpj_text and not validate_cnpj_format(cnpj_text):
+            # Se tem texto mas não está no formato correto, tenta formatar
+            numbers_only = clean_cnpj(cnpj_text)
+            if len(numbers_only) == 14:
+                formatted_cnpj = format_cnpj(numbers_only)
+                self.cnpj_var.set(formatted_cnpj)
+            elif len(numbers_only) > 0:
+                messagebox.showwarning("CNPJ Inválido", 
+                                     f"CNPJ deve ter 14 dígitos. Você digitou {len(numbers_only)} dígitos.")
 
 if __name__ == "__main__":
     root = tk.Tk()
