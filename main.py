@@ -97,6 +97,10 @@ class PDFillerApp:
         self.cnpj_var = tk.StringVar()
         self.razao_social_var = tk.StringVar()
         self.endereco_var = tk.StringVar()
+        self.complemento_var = tk.StringVar()
+        self.bairro_var = tk.StringVar()
+        self.municipio_var = tk.StringVar()
+        self.uf_var = tk.StringVar()
         self.data_feriado_var = tk.StringVar()
         self.filter_cnpj_var = tk.StringVar()
         self.filter_razao_social_var = tk.StringVar()
@@ -305,7 +309,11 @@ class PDFillerApp:
                 # Preencher os campos da interface
                 self.cnpj_var.set(cnpj)
                 self.razao_social_var.set(razao_social)
-                self.endereco_var.set(", ".join(endereco_completo))
+                self.endereco_var.set(endereco)
+                self.complemento_var.set(complemento)
+                self.bairro_var.set(bairro)
+                self.municipio_var.set(municipio)
+                self.uf_var.set(uf)
                 
                 # Limpar campo de pesquisa
                 self.search_term_var.set("")
@@ -473,9 +481,13 @@ class PDFillerApp:
         data_to_fill = {
             'cnpj': self.cnpj_var.get(),
             'razao_social': self.razao_social_var.get(),
-            'endereco': self.endereco_var.get(),
-            'data': self.data_feriado_var.get(),
             'nome_fantasia': nome_fantasia,
+            'endereco': self.endereco_var.get(),
+            'complemento': self.complemento_var.get(),
+            'bairro': self.bairro_var.get(),
+            'municipio': self.municipio_var.get(),
+            'uf': self.uf_var.get(),
+            'data': self.data_feriado_var.get()
         }
 
         # Chamar a função de preenchimento do módulo pdf_filler

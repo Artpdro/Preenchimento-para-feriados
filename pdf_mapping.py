@@ -6,12 +6,12 @@ pdf_fields = {
     # Segunda linha - Nome Fantasia
     'nome_fantasia': {'x': 163, 'y': 547, 'width': 120, 'height': 15},
     
-    # Terceira linha - Endereço, Número e Complemento
-    'endereco': {'x': 90, 'y': 515, 'width': 400, 'height': 15},
-
-    'municipio': {'x': 200, 'y': 515, 'width': 400, 'height': 15},
-
-    'uf': {'x': 250, 'y': 515, 'width': 400, 'height': 15},
+    # Terceira linha - Endereço completo dividido em campos separados
+    'endereco': {'x': 90, 'y': 515, 'width': 200, 'height': 15},
+    'complemento': {'x': 200, 'y': 515, 'width': 100, 'height': 15},
+    'bairro': {'x': 200, 'y': 515, 'width': 120, 'height': 15},
+    'municipio': {'x': 200, 'y': 515, 'width': 120, 'height': 15},
+    'uf': {'x': 200, 'y': 515, 'width': 40, 'height': 15},
     
     # Quarta linha - CEP e Email
     'data': {'x': 373, 'y': 468, 'width': 120, 'height': 15},
