@@ -100,7 +100,6 @@ class PDFillerApp:
         self.complemento_var = tk.StringVar()
         self.bairro_var = tk.StringVar()
         self.municipio_var = tk.StringVar()
-        self.uf_var = tk.StringVar()
         self.data_feriado_var = tk.StringVar()
         self.filter_cnpj_var = tk.StringVar()
         self.filter_razao_social_var = tk.StringVar()
@@ -259,7 +258,7 @@ class PDFillerApp:
             # Pesquisar por CNPJ (exato) ou razão social/nome fantasia (parcial)
             cursor.execute("""
                 SELECT cnpj, razao_social, nome_fantasia, endereco, complemento, 
-                       bairro, municipio, cep, uf, telefone, email
+                       bairro, municipio, cep, telefone, email
                 FROM empresas 
                 WHERE REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') LIKE ? 
                    OR UPPER(razao_social) LIKE UPPER(?) 
@@ -287,9 +286,8 @@ class PDFillerApp:
                 bairro = result[5] or ''
                 municipio = result[6] or ''
                 cep = result[7] or ''
-                uf = result[8] or ''
-                telefone = result[9] or ''
-                email = result[10] or ''
+                telefone = result[8] or ''
+                email = result[9] or ''
                 
                 # Montar endereço completo
                 endereco_completo = []
@@ -301,8 +299,6 @@ class PDFillerApp:
                     endereco_completo.append(bairro)
                 if municipio:
                     endereco_completo.append(municipio)
-                if uf:
-                    endereco_completo.append(uf)
                 if cep:
                     endereco_completo.append(f"CEP: {cep}")
                 
@@ -313,7 +309,6 @@ class PDFillerApp:
                 self.complemento_var.set(complemento)
                 self.bairro_var.set(bairro)
                 self.municipio_var.set(municipio)
-                self.uf_var.set(uf)
                 
                 # Limpar campo de pesquisa
                 self.search_term_var.set("")
@@ -486,7 +481,6 @@ class PDFillerApp:
             'complemento': self.complemento_var.get(),
             'bairro': self.bairro_var.get(),
             'municipio': self.municipio_var.get(),
-            'uf': self.uf_var.get(),
             'data': self.data_feriado_var.get()
         }
 

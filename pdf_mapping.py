@@ -11,7 +11,6 @@ pdf_fields = {
     'complemento': {'x': 200, 'y': 515, 'width': 100, 'height': 15},
     'bairro': {'x': 200, 'y': 515, 'width': 120, 'height': 15},
     'municipio': {'x': 200, 'y': 515, 'width': 120, 'height': 15},
-    'uf': {'x': 200, 'y': 515, 'width': 40, 'height': 15},
     
     # Quarta linha - CEP e Email
     'data': {'x': 373, 'y': 468, 'width': 120, 'height': 15},
