@@ -105,6 +105,7 @@ class PDFillerApp:
         self.filter_cnpj_var = tk.StringVar()
         self.filter_razao_social_var = tk.StringVar()
         self.output_dir_path = tk.StringVar()
+        self.nome_fantasia_var = tk.StringVar() # Adicionar esta linha
         
         # Variáveis para pesquisa
         self.search_term_var = tk.StringVar()
@@ -317,7 +318,8 @@ class PDFillerApp:
                 self.complemento_var.set(complemento)
                 self.bairro_var.set(bairro)
                 self.municipio_var.set(municipio)
-                
+                self.data_feriado_var.set("") # Limpar o campo de data do feriado após a pesquisa
+                self.nome_fantasia_var.set(nome_fantasia) # Adicionar esta linha para salvar o nome fantasia                
                 # Limpar campo de pesquisa
                 self.search_term_var.set("")
                 
@@ -478,12 +480,14 @@ class PDFillerApp:
             return
 
         # Verificar se há uma empresa selecionada na tabela para obter o nome fantasia
-        nome_fantasia = ""
-        selection = self.tree.selection()
-        if selection:
-            item = self.tree.item(selection[0])
-            values = item['values']
-            nome_fantasia = values[2] if len(values) > 2 else ""
+        nome_fantasia = self.nome_fantasia_var.get() # Usar a variável salva
+        if not nome_fantasia:
+            # Se não há nome fantasia salvo, tentar obter da tabela selecionada
+            selection = self.tree.selection()
+            if selection:
+                item = self.tree.item(selection[0])
+                values = item['values']
+                nome_fantasia = values[2] if len(values) > 2 else ""
 
         data_to_fill = {
             'cnpj': self.cnpj_var.get(),
