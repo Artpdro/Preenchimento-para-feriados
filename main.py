@@ -493,9 +493,9 @@ class PDFillerApp:
             'cnpj': self.cnpj_var.get(),
             'razao_social': self.razao_social_var.get(),
             'nome_fantasia': nome_fantasia,
-            'endereco': self.endereco_var.get(),
-            'complemento': self.complemento_var.get(),
-            'bairro': self.bairro_var.get(),
+            'endereco': self.endereco_var.get() + ',',
+            'complemento': self.complemento_var.get() + ',',
+            'bairro': self.bairro_var.get() + ',',
             'municipio': self.municipio_var.get(),
             'data': self.data_feriado_var.get()
         }
