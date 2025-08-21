@@ -97,10 +97,8 @@ class PDFillerApp:
         # Variáveis para armazenar os dados
         self.cnpj_var = tk.StringVar()
         self.razao_social_var = tk.StringVar()
-        self.endereco_var = tk.StringVar()
-        self.complemento_var = tk.StringVar()
-        self.bairro_var = tk.StringVar()
-        self.municipio_var = tk.StringVar()
+        self.telefone_var = tk.StringVar()
+        self.responsavel_var = tk.StringVar()
         self.data_feriado_var = tk.StringVar()
         self.filter_cnpj_var = tk.StringVar()
         self.filter_razao_social_var = tk.StringVar()
@@ -166,16 +164,18 @@ class PDFillerApp:
         self.cnpj_entry.bind('<FocusOut>', self.validate_cnpj_on_focus_out)
 
         # Nome da Empresa
-        ttk.Label(input_frame, text="Nome da Empresa:").grid(row=1, column=0, sticky="w", padx=10, pady=5)        
+        ttk.Label(input_frame, text="Nome da empresa (Razão social):").grid(row=1, column=0, sticky="w", padx=10, pady=5)        
         ttk.Entry(input_frame, textvariable=self.razao_social_var, width=60).grid(row=1, column=1, padx=10, pady=5, sticky="ew")
 
-        # Endereço
-        ttk.Label(input_frame, text="Endereço:").grid(row=2, column=0, sticky="w", padx=10, pady=5)
-        ttk.Entry(input_frame, textvariable=self.endereco_var, width=60).grid(row=2, column=1, padx=10, pady=5, sticky="ew")
+        # Telefone
+        ttk.Label(input_frame, text="Telefone:").grid(row=2, column=0, sticky="w", padx=10, pady=5)
+        self.telefone_var = tk.StringVar()
+        ttk.Entry(input_frame, textvariable=self.telefone_var, width=60).grid(row=2, column=1, padx=10, pady=5, sticky="ew")
 
-        # Dia do Feriado
-        ttk.Label(input_frame, text="Dia do Feriado:").grid(row=3, column=0, sticky="w", padx=10, pady=5)
-        ttk.Entry(input_frame, textvariable=self.data_feriado_var, width=60).grid(row=3, column=1, padx=10, pady=5, sticky="ew")
+        # Responsável
+        ttk.Label(input_frame, text="Responsável:").grid(row=3, column=0, sticky="w", padx=10, pady=5)
+        self.responsavel_var = tk.StringVar()
+        ttk.Entry(input_frame, textvariable=self.responsavel_var, width=60).grid(row=3, column=1, padx=10, pady=5, sticky="ew")
 
         # Frame para seleção de arquivos
         file_frame = ttk.LabelFrame(main_content_frame, text="Seleção de Arquivos")
@@ -263,15 +263,14 @@ class PDFillerApp:
             
             # Pesquisar por CNPJ (exato) ou razão social/nome fantasia (parcial)
             cursor.execute("""
-                SELECT cnpj, razao_social, nome_fantasia, endereco, complemento, 
-                       bairro, municipio, cep, telefone, email
+                SELECT cnpj, razao_social, telefone, responsavel
                 FROM empresas 
-                WHERE REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') LIKE ? 
+                WHERE REPLACE(REPLACE(REPLACE(cnpj, ".", ""), "/", ""), "-", "") LIKE ? 
                    OR UPPER(razao_social) LIKE UPPER(?) 
                    OR UPPER(nome_fantasia) LIKE UPPER(?)
                 ORDER BY 
                     CASE 
-                        WHEN REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') = ? THEN 1
+                        WHEN REPLACE(REPLACE(REPLACE(cnpj, ".", ""), "/", ""), "-", "") = ? THEN 1
                         WHEN UPPER(razao_social) = UPPER(?) THEN 2
                         WHEN UPPER(nome_fantasia) = UPPER(?) THEN 3
                         ELSE 4
@@ -289,37 +288,15 @@ class PDFillerApp:
                 cnpj_formatted = format_cnpj(cnpj) if cnpj else ''
                 
                 razao_social = result[1] or ''
-                nome_fantasia = result[2] or ''
-                endereco = result[3] or ''
-                complemento = result[4] or ''
-                bairro = result[5] or ''
-                municipio = result[6] or ''
-                cep = result[7] or ''
-                telefone = result[8] or ''
-                email = result[9] or ''
-                
-                # Montar endereço completo
-                endereco_completo = []
-                if endereco:
-                    endereco_completo.append(endereco)
-                if complemento:
-                    endereco_completo.append(complemento)
-                if bairro:
-                    endereco_completo.append(bairro)
-                if municipio:
-                    endereco_completo.append(municipio)
-                if cep:
-                    endereco_completo.append(f"CEP: {cep}")
+                telefone = result[2] or ''
+                responsavel = result[3] or ''
                 
                 # Preencher os campos da interface
                 self.cnpj_var.set(cnpj_formatted)
                 self.razao_social_var.set(razao_social)
-                self.endereco_var.set(endereco)
-                self.complemento_var.set(complemento)
-                self.bairro_var.set(bairro)
-                self.municipio_var.set(municipio)
-                self.data_feriado_var.set("") # Limpar o campo de data do feriado após a pesquisa
-                self.nome_fantasia_var.set(nome_fantasia) # Adicionar esta linha para salvar o nome fantasia                
+                self.telefone_var.set(telefone)
+                self.responsavel_var.set(responsavel)
+                
                 # Limpar campo de pesquisa
                 self.search_term_var.set("")
                 
@@ -492,12 +469,9 @@ class PDFillerApp:
         data_to_fill = {
             'cnpj': self.cnpj_var.get(),
             'razao_social': self.razao_social_var.get(),
-            'nome_fantasia': nome_fantasia,
-            'endereco': self.endereco_var.get() + ',',
-            'complemento': self.complemento_var.get() + ',',
-            'bairro': self.bairro_var.get() + ',',
-            'municipio': self.municipio_var.get(),
-            'data': self.data_feriado_var.get()
+            'telefone': self.telefone_var.get(),
+            'responsavel': self.responsavel_var.get(),
+            'data': self.data_feriado_var.get() # Manter o campo de data do feriado
         }
 
         # Chamar a função de preenchimento do módulo pdf_filler
