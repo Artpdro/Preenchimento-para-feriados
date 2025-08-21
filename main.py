@@ -103,7 +103,9 @@ class PDFillerApp:
         self.filter_cnpj_var = tk.StringVar()
         self.filter_razao_social_var = tk.StringVar()
         self.output_dir_path = tk.StringVar()
-        self.nome_fantasia_var = tk.StringVar() # Adicionar esta linha
+        self.nome_fantasia_var = tk.StringVar()
+        self.endereco_var = tk.StringVar()
+        self.municipio_var = tk.StringVar()
         
         # Variáveis para pesquisa
         self.search_term_var = tk.StringVar()
@@ -196,7 +198,7 @@ class PDFillerApp:
         table_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
         # Criar a tabela (Treeview)
-        columns = ("CNPJ", "Nome da Empresa", "Nome Fantasia", "Endereço", "Município", "Situação")
+        columns = ("CNPJ", "Nome da Empresa", "Nome Fantasia", "Telefone", "Endereço", "Município")
         self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=15)
         
         # Configurar cabeçalhos
@@ -208,11 +210,12 @@ class PDFillerApp:
                 self.tree.column(col, width=150, minwidth=120)
             elif col == "Nome Fantasia":
                 self.tree.column(col, width=150, minwidth=120)
+            elif col == "Telefone":
+                self.tree.column(col, width=100, minwidth=80)
             elif col == "Endereço":
                 self.tree.column(col, width=250, minwidth=200)
             elif col == "Município":
                 self.tree.column(col, width=150, minwidth=100)
-
         # Scrollbars para a tabela
         v_scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
         h_scrollbar = ttk.Scrollbar(table_frame, orient="horizontal", command=self.tree.xview)
@@ -263,7 +266,7 @@ class PDFillerApp:
             
             # Pesquisar por CNPJ (exato) ou razão social/nome fantasia (parcial)
             cursor.execute("""
-                SELECT cnpj, razao_social, telefone, responsavel
+                SELECT cnpj, razao_social, nome_fantasia, telefone, responsavel, endereco, cidade
                 FROM empresas 
                 WHERE REPLACE(REPLACE(REPLACE(cnpj, ".", ""), "/", ""), "-", "") LIKE ? 
                    OR UPPER(razao_social) LIKE UPPER(?) 
@@ -288,15 +291,20 @@ class PDFillerApp:
                 cnpj_formatted = format_cnpj(cnpj) if cnpj else ''
                 
                 razao_social = result[1] or ''
-                telefone = result[2] or ''
-                responsavel = result[3] or ''
+                nome_fantasia = result[2] or ''
+                telefone = result[3] or ''
+                responsavel = result[4] or ''
+                endereco = result[5] or ''
+                municipio = result[6] or ''
                 
                 # Preencher os campos da interface
                 self.cnpj_var.set(cnpj_formatted)
                 self.razao_social_var.set(razao_social)
+                self.nome_fantasia_var.set(nome_fantasia)
                 self.telefone_var.set(telefone)
                 self.responsavel_var.set(responsavel)
-                
+                self.endereco_var.set(endereco)
+                self.municipio_var.set(municipio)
                 # Limpar campo de pesquisa
                 self.search_term_var.set("")
                 
@@ -335,7 +343,7 @@ class PDFillerApp:
             cursor = conn.cursor()
             
             cursor.execute("""
-                SELECT cnpj, razao_social, nome_fantasia, endereco, municipio, situacao 
+                SELECT cnpj, razao_social, nome_fantasia, telefone, endereco, cidade 
                 FROM empresas 
                 ORDER BY razao_social
             """)
@@ -365,9 +373,9 @@ class PDFillerApp:
                 cnpj,
                 company[1] or "",  # razao_social
                 company[2] or "",  # nome_fantasia
-                company[3] or "",  # endereco
-                company[4] or "",  # municipio
-                company[5] or ""   # situacao
+                company[3] or "",  # telefone
+                company[4] or "",  # endereco
+                company[5] or ""   # cidade
             ))
 
     def filter_companies(self, *args):
@@ -383,7 +391,9 @@ class PDFillerApp:
         for company in self.companies_data:
             cnpj = str(company[0]).lower()
             razao_social = (company[1] or "").lower()
-            nome_fantasia = (company[2] or "").lower()
+            telefone = str(company[2] or "").lower()
+            endereco = (company[3] or "").lower()
+            cidade = (company[4] or "").lower()
             
             cnpj_match = filter_cnpj_text in cnpj
             name_match = filter_razao_social_text in razao_social or filter_razao_social_text in nome_fantasia
@@ -406,42 +416,11 @@ class PDFillerApp:
             
             # Preencher campos
             self.cnpj_var.set(cnpj_formatted)
-            self.razao_social_var.set(values[1])  # Nome da Empresa (Razão Social)            
-            # Preencher endereço diretamente da tabela se disponível
-            if values[3]:  # Se há endereço na tabela
-                self.endereco_var.set(values[3])
-            else:
-                # Buscar endereço completo no banco se não estiver na tabela
-                try:
-                    conn = sqlite3.connect('empresas.db')
-                    cursor = conn.cursor()
-                    
-                    cursor.execute("""
-                        SELECT endereco, complemento, bairro, municipio, cep
-                        FROM empresas 
-                        WHERE cnpj = ?
-                    """, (values[0],))
-                    
-                    result = cursor.fetchone()
-                    if result:
-                        endereco_completo = []
-                        if result[0]:  # endereco
-                            endereco_completo.append(result[0])
-                        if result[1]:  # complemento
-                            endereco_completo.append(result[1])
-                        if result[2]:  # bairro
-                            endereco_completo.append(result[2])
-                        if result[3]:  # municipio
-                            endereco_completo.append(result[3])
-                        if result[4]:  # cep
-                            endereco_completo.append(f"CEP: {result[4]}")
-                        
-                        self.endereco_var.set(", ".join(endereco_completo))
-                    
-                    conn.close()
-                    
-                except sqlite3.Error as e:
-                    print(f"Erro ao buscar endereço: {e}")
+            self.razao_social_var.set(values[1])  # Razão Social
+            self.nome_fantasia_var.set(values[2]) # Nome Fantasia
+            self.telefone_var.set(values[3])  # Telefone
+            self.endereco_var.set(values[4]) # Endereço
+            self.municipio_var.set(values[5]) # Município
 
     def select_output_dir(self):
         dir_path = filedialog.askdirectory()
