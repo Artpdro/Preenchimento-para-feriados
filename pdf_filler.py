@@ -29,7 +29,7 @@ def fill_pdf_document(input_pdf_path, output_dir_path, data_to_fill):
         can = canvas.Canvas(packet, pagesize=letter)
 
         # Definir a fonte e o tamanho
-        can.setFont("Helvetica", 10) # Ajuste o tamanho da fonte conforme necessário
+        can.setFont("Helvetica", 8) # Ajuste o tamanho da fonte conforme necessário
 
         # Preencher os campos com os dados
         for field_name, text_value in data_to_fill.items():

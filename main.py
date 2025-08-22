@@ -179,6 +179,10 @@ class PDFillerApp:
         self.responsavel_var = tk.StringVar()
         ttk.Entry(input_frame, textvariable=self.responsavel_var, width=60).grid(row=3, column=1, padx=10, pady=5, sticky="ew")
 
+        # Data do Feriado
+        ttk.Label(input_frame, text="Data do Feriado:").grid(row=4, column=0, sticky="w", padx=10, pady=5)
+        ttk.Entry(input_frame, textvariable=self.data_feriado_var, width=60).grid(row=4, column=1, padx=10, pady=5, sticky="ew")
+
         # Frame para seleção de arquivos
         file_frame = ttk.LabelFrame(main_content_frame, text="Seleção de Arquivos")
         file_frame.pack(padx=10, pady=10, fill="x")
@@ -450,7 +454,8 @@ class PDFillerApp:
             'razao_social': self.razao_social_var.get(),
             'telefone': self.telefone_var.get(),
             'responsavel': self.responsavel_var.get(),
-            'data': self.data_feriado_var.get() # Manter o campo de data do feriado
+            'data': self.data_feriado_var.get(), # Manter o campo de data do feriado
+            'municipio': self.municipio_var.get()
         }
 
         # Chamar a função de preenchimento do módulo pdf_filler
