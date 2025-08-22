@@ -52,7 +52,7 @@ class PDFillerApp:
 
         # Variáveis para a aba de lote
         self.batch_data_feriado_var = tk.StringVar()
-        self.batch_responsavel_var = tk.StringVar()
+
         self.batch_output_dir_path = tk.StringVar()
         self.batch_filter_cnpj_var = tk.StringVar()
         self.batch_filter_razao_social_var = tk.StringVar()
@@ -296,11 +296,10 @@ class PDFillerApp:
         batch_input_frame.columnconfigure(1, weight=1)
 
         # Responsável (comum para todas)
-        ttk.Label(batch_input_frame, text="Responsável:").grid(row=0, column=0, sticky="w", padx=10, pady=5)
-        ttk.Entry(batch_input_frame, textvariable=self.batch_responsavel_var, width=60).grid(row=0, column=1, padx=10, pady=5, sticky="ew")
+
 
         # Data do Feriado (comum para todas)
-        ttk.Label(batch_input_frame, text="Data do Feriado:").grid(row=1, column=0, sticky="w", padx=10, pady=5)
+        ttk.Label(batch_input_frame, text="Data do Feriado:").grid(row=0, column=0, sticky="w", padx=10, pady=5)
         ttk.Entry(batch_input_frame, textvariable=self.batch_data_feriado_var, width=60).grid(row=1, column=1, padx=10, pady=5, sticky="ew")
 
         # Frame para seleção de pasta de saída
@@ -650,18 +649,12 @@ class PDFillerApp:
     def process_batch(self):
         """Processar lote de empresas"""
         # Validar dados comuns
-        responsavel = self.batch_responsavel_var.get().strip()
+
         data_feriado = self.batch_data_feriado_var.get().strip()
+        
+
+        
         output_dir = self.batch_output_dir_path.get().strip()
-        
-        if not responsavel:
-            messagebox.showwarning("Aviso", "Por favor, informe o responsável.")
-            return
-        
-        if not data_feriado:
-            messagebox.showwarning("Aviso", "Por favor, informe a data do feriado.")
-            return
-        
         if not output_dir:
             messagebox.showwarning("Aviso", "Por favor, selecione o local para salvar os PDFs.")
             return
@@ -675,18 +668,15 @@ class PDFillerApp:
         
         # Confirmar processamento
         result = messagebox.askyesno("Confirmar Processamento", 
-                                   f"Processar {len(selected_companies)} empresas?\n\n"
-                                   f"Responsável: {responsavel}\n"
-                                   f"Data do Feriado: {data_feriado}\n"
-                                   f"Local de Saída: {output_dir}")
+                                   f"Processar {len(selected_companies)} empresas?\n\n"                                   f"Data do Feriado: {data_feriado}\n" +                                   f"Local de Saída: {output_dir}")
         
         if not result:
             return
         
         # Processar em thread separada para não travar a interface
-        self.process_batch_thread(selected_companies, responsavel, data_feriado, output_dir)
+        self.process_batch_thread(selected_companies, data_feriado, output_dir)
 
-    def process_batch_thread(self, companies, responsavel, data_feriado, output_dir):
+    def process_batch_thread(self, companies, data_feriado, output_dir):
         """Processar lote em thread separada"""
         def process():
             success_count = 0
@@ -701,7 +691,7 @@ class PDFillerApp:
                         'razao_social': company['razao_social'],
                         'nome_fantasia': company['nome_fantasia'],
                         'telefone': company['telefone'],
-                        'responsavel': responsavel,  # Usar responsável comum
+
                         'endereco': company['endereco'],
                         'municipio': company['municipio'],
                         'data_feriado': data_feriado  # Usar data comum
@@ -871,7 +861,6 @@ class PDFillerApp:
         cnpj = self.cnpj_var.get().strip()
         razao_social = self.razao_social_var.get().strip()
         telefone = self.telefone_var.get().strip()
-        responsavel = self.responsavel_var.get().strip()
         data_feriado = self.data_feriado_var.get().strip()
         output_dir = self.output_dir_path.get().strip()
         
