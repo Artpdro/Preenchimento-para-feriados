@@ -621,7 +621,7 @@ class PDFillerApp:
                     
                     cnpj_clean = clean_cnpj(cnpj)
                     cursor.execute("""
-                        SELECT cnpj, razao_social, nome_fantasia, telefone, responsavel, endereco, cidade
+                        SELECT cnpj, razao_social, nome_fantasia, telefone, endereco, cidade
                         FROM empresas 
                         WHERE REPLACE(REPLACE(REPLACE(cnpj, ".", ""), "/", ""), "-", "") = ?
                     """, (cnpj_clean,))
@@ -633,9 +633,9 @@ class PDFillerApp:
                             'razao_social': result[1] or '',
                             'nome_fantasia': result[2] or '',
                             'telefone': result[3] or '',
-                            'responsavel': result[4] or '',
-                            'endereco': result[5] or '',
-                            'municipio': result[6] or ''
+
+                            'endereco': result[4] or '',
+                            'municipio': result[5] or ''
                         }
                         selected.append(company_data)
                     
@@ -690,7 +690,7 @@ class PDFillerApp:
                         'cnpj': company['cnpj'],
                         'razao_social': company['razao_social'],
                         'nome_fantasia': company['nome_fantasia'],
-                        'telefone': company['telefone'],
+
 
                         'endereco': company['endereco'],
                         'municipio': company['municipio'],
@@ -753,8 +753,7 @@ class PDFillerApp:
         cnpj_filter = self.batch_filter_cnpj_var.get().lower()
         name_filter = self.batch_filter_razao_social_var.get().lower()
         
-        # Recarregar todas as empresas
-        self.load_batch_companies()
+
         
         if not cnpj_filter and not name_filter:
             return
@@ -775,9 +774,9 @@ class PDFillerApp:
                 show_item = False
             
             if not show_item:
-                self.batch_tree.delete(item)
-        
-        self.update_selection_count()
+                self.batch_tree.detach(item)
+            else:
+                self.batch_tree.reattach(item, '', 'end')
 
     # Métodos originais mantidos
     def on_company_select(self, event):
@@ -797,7 +796,7 @@ class PDFillerApp:
                     
                     cnpj_clean = clean_cnpj(cnpj)
                     cursor.execute("""
-                        SELECT cnpj, razao_social, nome_fantasia, telefone, responsavel, endereco, cidade
+                        SELECT cnpj, razao_social, nome_fantasia, telefone, endereco, cidade
                         FROM empresas 
                         WHERE REPLACE(REPLACE(REPLACE(cnpj, ".", ""), "/", ""), "-", "") = ?
                     """, (cnpj_clean,))
@@ -932,3 +931,6 @@ if __name__ == "__main__":
     app = PDFillerApp(root)
     root.mainloop()
 
+
+
+        self.update_selection_count()
