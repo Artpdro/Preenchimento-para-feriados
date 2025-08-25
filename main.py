@@ -2,6 +2,7 @@ import tkinter as tk
 from tkinter import filedialog, messagebox, ttk
 import sqlite3
 import os
+from datetime import datetime
 
 # Importar a função de preenchimento e o mapeamento
 from pdf_filler import fill_pdf_document
@@ -12,25 +13,25 @@ class PDFillerApp:
     def __init__(self, master):
         self.master = master
         master.title("Preencher solicitação de abertura")
-        master.geometry("1200x900") # Aumentando o tamanho da janela para acomodar a nova funcionalidade
-        master.resizable(True, True) # Permitir redimensionamento
-        master.configure(bg="#F0F0F0") # Fundo cinza claro para a janela principal
+        master.geometry("1200x900")
+        master.resizable(True, True)
+        master.configure(bg="#F0F0F0")
 
         # Cores baseadas na imagem de referência do Sindnorte
         self.colors = {
-            'primary_blue': '#4A90E2',  # Azul principal para cabeçalhos e botões
-            'light_blue': '#5BA3F5',    # Azul claro para hover/ativo
-            'dark_blue': '#2C5AA0',     # Azul escuro para texto em azul
-            'white': '#FFFFFF',         # Branco para fundo de campos e texto
-            'light_gray': '#F5F5F5',    # Cinza muito claro para frames
-            'medium_gray': '#E0E0E0',   # Cinza médio para bordas ou divisores
-            'dark_gray': '#666666',     # Cinza escuro para texto secundário
-            'text_dark': '#333333'      # Preto quase total para texto principal
+            'primary_blue': '#4A90E2',
+            'light_blue': '#5BA3F5',
+            'dark_blue': '#2C5AA0',
+            'white': '#FFFFFF',
+            'light_gray': '#F5F5F5',
+            'medium_gray': '#E0E0E0',
+            'dark_gray': '#666666',
+            'text_dark': '#333333'
         }
 
         # Configurar estilo ttk
         style = ttk.Style()
-        style.theme_use("clam") # Tema base
+        style.theme_use("clam")
 
         # Estilo para Labels
         style.configure("TLabel", 
@@ -67,6 +68,17 @@ class PDFillerApp:
                         relief="flat")
         style.map("Search.TButton", 
                   background=[('active', '#218838')],
+                  foreground=[('active', self.colors['white'])])
+
+        # Estilo para botão de preenchimento em lote
+        style.configure("Batch.TButton", 
+                        font=("Arial", 10, "bold"), 
+                        padding=5, 
+                        background='#FF6B35', 
+                        foreground=self.colors['white'],
+                        relief="flat")
+        style.map("Batch.TButton", 
+                  background=[('active', '#E55A2B')],
                   foreground=[('active', self.colors['white'])])
 
         # Estilo para LabelFrames (molduras)
@@ -109,30 +121,46 @@ class PDFillerApp:
         
         # Variáveis para pesquisa
         self.search_term_var = tk.StringVar()
+        
+        # Variáveis para preenchimento em lote
+        self.batch_data_feriado_var = tk.StringVar()
+        self.batch_output_dir_path = tk.StringVar()
+        self.batch_filter_cnpj_var = tk.StringVar()
+        self.batch_filter_razao_social_var = tk.StringVar()
 
-        # Widgets da interface
-        self.create_widgets()
+        # Criar notebook (abas)
+        self.notebook = ttk.Notebook(master)
+        self.notebook.pack(fill="both", expand=True, padx=10, pady=10)
+
+        # Criar as abas
+        self.create_individual_tab()
+        self.create_batch_tab()
         
         # Carregar dados das empresas
         self.load_companies()
 
-    def create_widgets(self):
-        # Cabeçalho (simples, apenas para cor)
-        header_frame = tk.Frame(self.master, bg=self.colors['primary_blue'], height=40)
+    def create_individual_tab(self):
+        """Cria a aba de preenchimento individual"""
+        # Frame para a aba individual
+        individual_frame = ttk.Frame(self.notebook)
+        self.notebook.add(individual_frame, text="Preenchimento Individual")
+
+        # Cabeçalho
+        header_frame = tk.Frame(individual_frame, bg=self.colors['primary_blue'], height=40)
         header_frame.pack(fill='x', padx=0, pady=0)
         header_frame.pack_propagate(False)
         
-        header_label = tk.Label(header_frame, text="Preencher abertura de feriados", 
+        header_label = tk.Label(header_frame, text="Preencher abertura de feriados - Individual", 
                                 font=("Arial", 14, "bold"), 
                                 fg=self.colors['white'], 
                                 bg=self.colors['primary_blue'])
         header_label.pack(pady=8)
 
         # Frame principal para o conteúdo
-        main_content_frame = tk.Frame(self.master, bg=self.colors["light_gray"])
+        main_content_frame = tk.Frame(individual_frame, bg=self.colors["light_gray"])
         main_content_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
-        # NOVO: Frame para pesquisa de empresas
+        # Frame para pesquisa de empresas
         search_frame = ttk.LabelFrame(main_content_frame, text="Pesquisar Empresa")
         search_frame.pack(padx=10, pady=10, fill="x")
         search_frame.columnconfigure(1, weight=1)
@@ -153,15 +181,12 @@ class PDFillerApp:
         # Frame para os campos de entrada
         input_frame = ttk.LabelFrame(main_content_frame, text="Dados para Preenchimento")
         input_frame.pack(padx=10, pady=10, fill="x")
-
-        # Configurar grid para centralizar e expandir
         input_frame.columnconfigure(1, weight=1)
 
         # CNPJ
         ttk.Label(input_frame, text="CNPJ:").grid(row=0, column=0, sticky="w", padx=10, pady=5)
         self.cnpj_entry = ttk.Entry(input_frame, textvariable=self.cnpj_var, width=60)
         self.cnpj_entry.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
-        # Bind para formatação automática do CNPJ
         self.cnpj_entry.bind('<KeyRelease>', self.format_cnpj_on_type)
         self.cnpj_entry.bind('<FocusOut>', self.validate_cnpj_on_focus_out)
 
@@ -171,12 +196,10 @@ class PDFillerApp:
 
         # Telefone
         ttk.Label(input_frame, text="Telefone:").grid(row=2, column=0, sticky="w", padx=10, pady=5)
-        self.telefone_var = tk.StringVar()
         ttk.Entry(input_frame, textvariable=self.telefone_var, width=60).grid(row=2, column=1, padx=10, pady=5, sticky="ew")
 
         # Responsável
         ttk.Label(input_frame, text="Responsável:").grid(row=3, column=0, sticky="w", padx=10, pady=5)
-        self.responsavel_var = tk.StringVar()
         ttk.Entry(input_frame, textvariable=self.responsavel_var, width=60).grid(row=3, column=1, padx=10, pady=5, sticky="ew")
 
         # Data do Feriado
@@ -220,6 +243,7 @@ class PDFillerApp:
                 self.tree.column(col, width=250, minwidth=200)
             elif col == "Município":
                 self.tree.column(col, width=150, minwidth=100)
+
         # Scrollbars para a tabela
         v_scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
         h_scrollbar = ttk.Scrollbar(table_frame, orient="horizontal", command=self.tree.xview)
@@ -253,8 +277,296 @@ class PDFillerApp:
         filter_razao_social_entry = ttk.Entry(filter_frame, textvariable=self.filter_razao_social_var, width=30)
         filter_razao_social_entry.pack(side="left", padx=5)
 
+    def create_batch_tab(self):
+        """Cria a aba de preenchimento em lote"""
+        # Frame para a aba de lote
+        batch_frame = ttk.Frame(self.notebook)
+        self.notebook.add(batch_frame, text="Preenchimento em Lote")
+
+        # Cabeçalho
+        header_frame = tk.Frame(batch_frame, bg=self.colors['primary_blue'], height=40)
+        header_frame.pack(fill='x', padx=0, pady=0)
+        header_frame.pack_propagate(False)
+        
+        header_label = tk.Label(header_frame, text="Preencher abertura de feriados - Em Lote", 
+                                font=("Arial", 14, "bold"), 
+                                fg=self.colors['white'], 
+                                bg=self.colors['primary_blue'])
+        header_label.pack(pady=8)
+
+        # Frame principal para o conteúdo
+        main_content_frame = tk.Frame(batch_frame, bg=self.colors["light_gray"])
+        main_content_frame.pack(padx=10, pady=10, fill="both", expand=True)
+
+        # Frame para configuração do lote
+        batch_config_frame = ttk.LabelFrame(main_content_frame, text="Configuração do Preenchimento em Lote")
+        batch_config_frame.pack(padx=10, pady=10, fill="x")
+        batch_config_frame.columnconfigure(1, weight=1)
+
+        # Data do Feriado para lote
+        ttk.Label(batch_config_frame, text="Data do Feriado:").grid(row=0, column=0, sticky="w", padx=10, pady=5)
+        batch_date_entry = ttk.Entry(batch_config_frame, textvariable=self.batch_data_feriado_var, width=60)
+        batch_date_entry.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
+        
+        # Adicionar dica de formato
+        ttk.Label(batch_config_frame, text="(Formato: DD/MM/AAAA)", 
+                 font=("Arial", 8), foreground=self.colors['dark_gray']).grid(row=1, column=1, sticky="w", padx=10)
+
+        # Frame para seleção de diretório de saída
+        batch_file_frame = ttk.LabelFrame(main_content_frame, text="Local para Salvar")
+        batch_file_frame.pack(padx=10, pady=10, fill="x")
+        batch_file_frame.columnconfigure(1, weight=1)
+
+        # Diretório de Saída para lote
+        ttk.Label(batch_file_frame, text="Pasta de destino:").grid(row=0, column=0, sticky="w", padx=10, pady=5)
+        ttk.Entry(batch_file_frame, textvariable=self.batch_output_dir_path, width=50, state="readonly").grid(row=0, column=1, padx=10, pady=5, sticky="ew")
+        ttk.Button(batch_file_frame, text="Selecionar Pasta", command=self.select_batch_output_dir).grid(row=0, column=2, padx=10, pady=5)
+
+        # Frame para a tabela de empresas no modo lote
+        batch_table_frame = ttk.LabelFrame(main_content_frame, text="Empresas Cadastradas (Selecione para Preencher)")
+        batch_table_frame.pack(padx=10, pady=10, fill="both", expand=True)
+
+        # Criar a tabela (Treeview) para seleção em lote
+        columns = ("CNPJ", "Nome da Empresa", "Nome Fantasia", "Telefone", "Endereço", "Município")
+        self.batch_tree = ttk.Treeview(batch_table_frame, columns=columns, show="headings", height=10, selectmode="extended")
+        
+        # Configurar cabeçalhos
+        for col in columns:
+            self.batch_tree.heading(col, text=col)
+            if col == "CNPJ":
+                self.batch_tree.column(col, width=100, minwidth=80)
+            elif col == "Nome da Empresa":
+                self.batch_tree.column(col, width=120, minwidth=100)
+            elif col == "Nome Fantasia":
+                self.batch_tree.column(col, width=120, minwidth=100)
+            elif col == "Telefone":
+                self.batch_tree.column(col, width=80, minwidth=60)
+            elif col == "Endereço":
+                self.batch_tree.column(col, width=200, minwidth=150)
+            elif col == "Município":
+                self.batch_tree.column(col, width=100, minwidth=80)
+
+        # Scrollbars para a tabela de lote
+        batch_v_scrollbar = ttk.Scrollbar(batch_table_frame, orient="vertical", command=self.batch_tree.yview)
+        batch_h_scrollbar = ttk.Scrollbar(batch_table_frame, orient="horizontal", command=self.batch_tree.xview)
+        self.batch_tree.configure(yscrollcommand=batch_v_scrollbar.set, xscrollcommand=batch_h_scrollbar.set)
+
+        # Posicionar tabela e scrollbars
+        self.batch_tree.grid(row=0, column=0, sticky="nsew")
+        batch_v_scrollbar.grid(row=0, column=1, sticky="ns")
+        batch_h_scrollbar.grid(row=1, column=0, sticky="ew")
+
+        # Configurar expansão do grid
+        batch_table_frame.grid_rowconfigure(0, weight=1)
+        batch_table_frame.grid_columnconfigure(0, weight=1)
+
+        # Frame para filtros da tabela de lote
+        batch_filter_frame = ttk.Frame(batch_table_frame)
+        batch_filter_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
+        
+        ttk.Label(batch_filter_frame, text="Filtrar por CNPJ:").pack(side="left", padx=5)
+        self.batch_filter_cnpj_var.trace("w", self.filter_batch_companies)
+        batch_filter_cnpj_entry = ttk.Entry(batch_filter_frame, textvariable=self.batch_filter_cnpj_var, width=20)
+        batch_filter_cnpj_entry.pack(side="left", padx=5)
+
+        ttk.Label(batch_filter_frame, text="Filtrar por Nome/Fantasia:").pack(side="left", padx=5)
+        self.batch_filter_razao_social_var.trace("w", self.filter_batch_companies)
+        batch_filter_razao_social_entry = ttk.Entry(batch_filter_frame, textvariable=self.batch_filter_razao_social_var, width=30)
+        batch_filter_razao_social_entry.pack(side="left", padx=5)
+
+        # Botões de seleção
+        selection_buttons_frame = ttk.Frame(batch_table_frame)
+        selection_buttons_frame.grid(row=3, column=0, columnspan=2, pady=5)
+        ttk.Button(selection_buttons_frame, text="Selecionar Todas", command=self.select_all_batch_companies).pack(side="left", padx=5)
+        ttk.Button(selection_buttons_frame, text="Desselecionar Todas", command=self.deselect_all_batch_companies).pack(side="left", padx=5)
+
+        # Botão de Preenchimento em Lote
+        batch_fill_button = ttk.Button(main_content_frame, text="Preencher PDFs das Empresas Selecionadas", 
+                                      command=self.fill_batch_pdf, style="Batch.TButton")
+        batch_fill_button.pack(pady=20)
+
+        # Texto informativo
+        info_text = tk.Text(main_content_frame, height=5, wrap=tk.WORD, font=("Arial", 10))
+        info_text.pack(padx=10, pady=10, fill="x")
+        
+        info_content = """PREENCHIMENTO EM LOTE
+
+Esta funcionalidade permite preencher PDFs para as empresas selecionadas na tabela abaixo.
+
+Como usar:
+1. Digite a data do feriado no formato DD/MM/AAAA
+2. Selecione as empresas desejadas na tabela (use Ctrl/Cmd para seleção múltipla)
+3. Selecione a pasta onde os PDFs preenchidos serão salvos
+4. Clique em "Preencher PDFs das Empresas Selecionadas"
+
+Observações:
+• Certifique-se de que há espaço suficiente na pasta de destino
+• O processo pode demorar alguns minutos dependendo da quantidade de empresas selecionadas
+• Empresas sem dados completos serão puladas e listadas no relatório final"""
+
+        info_text.insert(tk.END, info_content)
+        info_text.config(state=tk.DISABLED)
+
+    def select_batch_output_dir(self):
+        """Seleciona o diretório de saída para preenchimento em lote"""
+        directory = filedialog.askdirectory(title="Selecionar pasta para salvar PDFs em lote")
+        if directory:
+            self.batch_output_dir_path.set(directory)
+
+    def select_all_batch_companies(self):
+        """Seleciona todas as empresas visíveis na tabela de lote"""
+        for item in self.batch_tree.get_children():
+            self.batch_tree.selection_add(item)
+
+    def deselect_all_batch_companies(self):
+        """Desseleciona todas as empresas na tabela de lote"""
+        self.batch_tree.selection_remove(self.batch_tree.selection())
+
+    def fill_batch_pdf(self):
+        """Preenche PDFs para as empresas selecionadas"""
+        # Validar entrada
+        data_feriado = self.batch_data_feriado_var.get().strip()
+        output_dir = self.batch_output_dir_path.get().strip()
+        selected_items = self.batch_tree.selection()
+
+        if not data_feriado:
+            messagebox.showerror("Erro", "Por favor, informe a data do feriado.")
+            return
+
+        if not output_dir:
+            messagebox.showerror("Erro", "Por favor, selecione a pasta de destino.")
+            return
+
+        if not selected_items:
+            messagebox.showwarning("Aviso", "Por favor, selecione pelo menos uma empresa na tabela.")
+            return
+
+        # Validar formato da data
+        try:
+            datetime.strptime(data_feriado, "%d/%m/%Y")
+        except ValueError:
+            messagebox.showerror("Erro", "Data inválida. Use o formato DD/MM/AAAA.")
+            return
+
+        # Coletar dados das empresas selecionadas
+        empresas_selecionadas = []
+        for item_id in selected_items:
+            values = self.batch_tree.item(item_id, 'values')
+            # CNPJ, Razão Social, Nome Fantasia, Telefone, Endereço, Município
+            empresas_selecionadas.append({
+                'cnpj': values[0],
+                'razao_social': values[1],
+                'nome_fantasia': values[2],
+                'telefone': values[3],
+                'endereco': values[4],
+                'municipio': values[5]
+            })
+
+        # Confirmar operação
+        result = messagebox.askyesno("Confirmar", 
+                                   f"Deseja preencher PDFs para {len(empresas_selecionadas)} empresas selecionadas?\n\n"
+                                   f"Data do feriado: {data_feriado}\n"
+                                   f"Pasta de destino: {output_dir}")
+        if not result:
+            return
+
+        try:
+            # Contadores para relatório
+            total_empresas = len(empresas_selecionadas)
+            sucessos = 0
+            erros = []
+
+            # Criar barra de progresso
+            progress_window = tk.Toplevel(self.master)
+            progress_window.title("Processando...")
+            progress_window.geometry("400x150")
+            progress_window.resizable(False, False)
+            progress_window.transient(self.master)
+            progress_window.grab_set()
+
+            # Centralizar janela de progresso
+            progress_window.geometry("+%d+%d" % (
+                self.master.winfo_rootx() + 50,
+                self.master.winfo_rooty() + 50
+            ))
+
+            progress_label = ttk.Label(progress_window, text="Iniciando processamento...")
+            progress_label.pack(pady=10)
+
+            progress_bar = ttk.Progressbar(progress_window, length=300, mode='determinate')
+            progress_bar.pack(pady=10)
+            progress_bar['maximum'] = total_empresas
+
+            status_label = ttk.Label(progress_window, text="")
+            status_label.pack(pady=5)
+
+            # Processar cada empresa selecionada
+            for i, empresa_data in enumerate(empresas_selecionadas):
+                cnpj_formatted = empresa_data['cnpj']
+                razao_social = empresa_data['razao_social']
+                nome_fantasia = empresa_data['nome_fantasia']
+                telefone = empresa_data['telefone']
+                endereco = empresa_data['endereco']
+                municipio = empresa_data['municipio']
+                
+                # Atualizar interface
+                progress_label.config(text=f"Processando empresa {i+1} de {total_empresas}")
+                status_label.config(text=f"Empresa: {razao_social[:40]}...")
+                progress_bar['value'] = i + 1
+                progress_window.update()
+
+                try:
+                    # Preparar dados para preenchimento
+                    data = {
+                        'cnpj': cnpj_formatted,
+                        'razao_social': razao_social or '',
+                        'nome_fantasia': nome_fantasia or '',
+                        'telefone': telefone or '',
+                        'responsavel': '', # Responsável não está na tabela de empresas
+                        'endereco': endereco or '',
+                        'municipio': municipio or '',
+                        'data_feriado': data_feriado
+                    }
+
+                    # Nome do arquivo de saída
+                    nome_arquivo_limpo = razao_social.replace('/', '_').replace('\\', '_')
+                    nome_arquivo = f"{nome_arquivo_limpo[:50]}.pdf"
+                    output_path = os.path.join(output_dir, nome_arquivo)
+
+                    # Preencher PDF
+                    template_path = "formulario.pdf"
+                    if os.path.exists(template_path):
+                        fill_pdf_document(template_path, output_path, data, self.pdf_fields)
+                        sucessos += 1
+                    else:
+                        erros.append(f"{razao_social}: Arquivo template não encontrado")
+
+                except Exception as e:
+                    erros.append(f"{razao_social}: {str(e)}")
+
+            # Fechar janela de progresso
+            progress_window.destroy()
+
+            # Mostrar relatório
+            relatorio = f"Processamento concluído!\n\n"
+            relatorio += f"Total de empresas selecionadas: {total_empresas}\n"
+            relatorio += f"PDFs criados com sucesso: {sucessos}\n"
+            relatorio += f"Erros: {len(erros)}\n\n"
+
+            if erros:
+                relatorio += "Empresas com erro:\n"
+                for erro in erros[:10]:  # Mostrar apenas os primeiros 10 erros
+                    relatorio += f"• {erro}\n"
+                if len(erros) > 10:
+                    relatorio += f"... e mais {len(erros) - 10} erros.\n"
+
+            messagebox.showinfo("Relatório", relatorio)
+
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro durante o processamento: {e}")
+
     def search_and_fill_company(self):
-        """Nova função para pesquisar empresa e preencher campos automaticamente"""
+        """Pesquisa empresa e preenche campos automaticamente"""
         search_term = self.search_term_var.get().strip()
         
         if not search_term:
@@ -291,7 +603,6 @@ class PDFillerApp:
             if result:
                 # Preencher os campos com os dados encontrados
                 cnpj = str(result[0]).replace('.0', '') if result[0] else ''
-                # Formatar o CNPJ no padrão X.XXX.XXX/YYYY-ZZ
                 cnpj_formatted = format_cnpj(cnpj) if cnpj else ''
                 
                 razao_social = result[1] or ''
@@ -341,164 +652,253 @@ class PDFillerApp:
             print(f"Erro ao destacar empresa na tabela: {e}")
 
     def load_companies(self):
-        """Carrega as empresas do banco de dados na tabela"""
+        """Carrega as empresas do banco de dados na tabela individual e na tabela de lote"""
         try:
             conn = sqlite3.connect('empresas.db')
             cursor = conn.cursor()
             
             cursor.execute("""
-                SELECT cnpj, razao_social, nome_fantasia, telefone, endereco, cidade 
+                SELECT cnpj, razao_social, nome_fantasia, telefone, endereco, cidade
                 FROM empresas 
                 ORDER BY razao_social
             """)
             
-            self.companies_data = cursor.fetchall()
-            self.display_companies(self.companies_data)
+            companies = cursor.fetchall()
+            
+            # Limpar tabela individual existente
+            for item in self.tree.get_children():
+                self.tree.delete(item)
+            
+            # Limpar tabela de lote existente
+            for item in self.batch_tree.get_children():
+                self.batch_tree.delete(item)
+            
+            # Adicionar empresas às tabelas
+            for company in companies:
+                cnpj = str(company[0]).replace('.0', '') if company[0] else ''
+                cnpj_formatted = format_cnpj(cnpj) if cnpj else ''
+                
+                values = (
+                    cnpj_formatted,
+                    company[1] or '',  # razao_social
+                    company[2] or '',  # nome_fantasia
+                    company[3] or '',  # telefone
+                    company[4] or '',  # endereco
+                    company[5] or ''   # cidade
+                )
+                self.tree.insert('', 'end', values=values)
+                self.batch_tree.insert('', 'end', values=values)
             
             conn.close()
             
         except sqlite3.Error as e:
             messagebox.showerror("Erro", f"Erro ao carregar empresas: {e}")
 
-    def display_companies(self, companies):
-        """Exibe as empresas na tabela"""
-        # Limpar tabela
-        for item in self.tree.get_children():
-            self.tree.delete(item)
-        
-        # Adicionar empresas
-        for company in companies:
-            # Formatar CNPJ se for numérico
-            cnpj = str(company[0])
-            if cnpj.replace('.', '').isdigit():
-                cnpj = cnpj.replace('.0', '')  # Remove .0 se existir
-            
-            self.tree.insert("", "end", values=(
-                cnpj,
-                company[1] or "",  # razao_social
-                company[2] or "",  # nome_fantasia
-                company[3] or "",  # telefone
-                company[4] or "",  # endereco
-                company[5] or ""   # cidade
-            ))
-
     def filter_companies(self, *args):
-        """Filtra as empresas baseado no texto digitado"""
-        filter_cnpj_text = self.filter_cnpj_var.get().lower()
-        filter_razao_social_text = self.filter_razao_social_var.get().lower()
+        """Filtra as empresas na tabela individual"""
+        cnpj_filter = self.filter_cnpj_var.get().lower()
+        name_filter = self.filter_razao_social_var.get().lower()
         
-        if not filter_cnpj_text and not filter_razao_social_text:
-            self.display_companies(self.companies_data)
+        # Se não há filtros, mostrar todas as empresas
+        if not cnpj_filter and not name_filter:
+            self.load_companies()
             return
         
-        filtered_companies = []
-        for company in self.companies_data:
-            cnpj = str(company[0]).lower()
-            razao_social = (company[1] or "").lower()
-            telefone = str(company[2] or "").lower()
-            endereco = (company[3] or "").lower()
-            cidade = (company[4] or "").lower()
+        try:
+            conn = sqlite3.connect('empresas.db')
+            cursor = conn.cursor()
             
-            cnpj_match = filter_cnpj_text in cnpj
-            name_match = filter_razao_social_text in razao_social or filter_razao_social_text in nome_fantasia
+            # Construir query com filtros
+            query = """
+                SELECT cnpj, razao_social, nome_fantasia, telefone, endereco, cidade
+                FROM empresas 
+                WHERE 1=1
+            """
+            params = []
             
-            if (not filter_cnpj_text or cnpj_match) and (not filter_razao_social_text or name_match):
-                filtered_companies.append(company)
+            if cnpj_filter:
+                query += " AND LOWER(cnpj) LIKE ?"
+                params.append(f'%{cnpj_filter}%')
+            
+            if name_filter:
+                query += " AND (LOWER(razao_social) LIKE ? OR LOWER(nome_fantasia) LIKE ?)"
+                params.extend([f'%{name_filter}%', f'%{name_filter}%'])
+            
+            query += " ORDER BY razao_social"
+            
+            cursor.execute(query, params)
+            companies = cursor.fetchall()
+            
+            # Limpar tabela existente
+            for item in self.tree.get_children():
+                self.tree.delete(item)
+            
+            # Adicionar empresas filtradas à tabela
+            for company in companies:
+                cnpj = str(company[0]).replace('.0', '') if company[0] else ''
+                cnpj_formatted = format_cnpj(cnpj) if cnpj else ''
+                
+                values = (
+                    cnpj_formatted,
+                    company[1] or '',  # razao_social
+                    company[2] or '',  # nome_fantasia
+                    company[3] or '',  # telefone
+                    company[4] or '',  # endereco
+                    company[5] or ''   # cidade
+                )
+                self.tree.insert('', 'end', values=values)
+            
+            conn.close()
+            
+        except sqlite3.Error as e:
+            messagebox.showerror("Erro", f"Erro ao filtrar empresas: {e}")
+
+    def filter_batch_companies(self, *args):
+        """Filtra as empresas na tabela de lote"""
+        cnpj_filter = self.batch_filter_cnpj_var.get().lower()
+        name_filter = self.batch_filter_razao_social_var.get().lower()
         
-        self.display_companies(filtered_companies)
+        # Se não há filtros, mostrar todas as empresas
+        if not cnpj_filter and not name_filter:
+            self.load_companies()
+            return
+        
+        try:
+            conn = sqlite3.connect('empresas.db')
+            cursor = conn.cursor()
+            
+            # Construir query com filtros
+            query = """
+                SELECT cnpj, razao_social, nome_fantasia, telefone, endereco, cidade
+                FROM empresas 
+                WHERE 1=1
+            """
+            params = []
+            
+            if cnpj_filter:
+                query += " AND LOWER(cnpj) LIKE ?"
+                params.append(f'%{cnpj_filter}%')
+            
+            if name_filter:
+                query += " AND (LOWER(razao_social) LIKE ? OR LOWER(nome_fantasia) LIKE ?)"
+                params.extend([f'%{name_filter}%', f'%{name_filter}%'])
+            
+            query += " ORDER BY razao_social"
+            
+            cursor.execute(query, params)
+            companies = cursor.fetchall()
+            
+            # Limpar tabela existente
+            for item in self.batch_tree.get_children():
+                self.batch_tree.delete(item)
+            
+            # Adicionar empresas filtradas à tabela
+            for company in companies:
+                cnpj = str(company[0]).replace('.0', '') if company[0] else ''
+                cnpj_formatted = format_cnpj(cnpj) if cnpj else ''
+                
+                values = (
+                    cnpj_formatted,
+                    company[1] or '',  # razao_social
+                    company[2] or '',  # nome_fantasia
+                    company[3] or '',  # telefone
+                    company[4] or '',  # endereco
+                    company[5] or ''   # cidade
+                )
+                self.batch_tree.insert('', 'end', values=values)
+            
+            conn.close()
+            
+        except sqlite3.Error as e:
+            messagebox.showerror("Erro", f"Erro ao filtrar empresas: {e}")
 
     def on_company_select(self, event):
-        """Preenche os campos quando uma empresa é selecionada"""
+        """Preenche os campos quando uma empresa é selecionada na tabela individual"""
         selection = self.tree.selection()
         if selection:
             item = self.tree.item(selection[0])
             values = item['values']
             
-            # Formatar o CNPJ no padrão X.XXX.XXX/YYYY-ZZ
-            cnpj_raw = str(values[0])
-            cnpj_formatted = format_cnpj(cnpj_raw) if cnpj_raw else ''
-            
-            # Preencher campos
-            self.cnpj_var.set(cnpj_formatted)
-            self.razao_social_var.set(values[1])  # Razão Social
-            self.nome_fantasia_var.set(values[2]) # Nome Fantasia
-            self.telefone_var.set(values[3])  # Telefone
-            self.endereco_var.set(values[4]) # Endereço
-            self.municipio_var.set(values[5]) # Município
+            if values:
+                self.cnpj_var.set(values[0])
+                self.razao_social_var.set(values[1])
+                self.nome_fantasia_var.set(values[2])
+                self.telefone_var.set(values[3])
+                self.endereco_var.set(values[4])
+                self.municipio_var.set(values[5])
 
     def select_output_dir(self):
-        dir_path = filedialog.askdirectory()
-        if dir_path:
-            self.output_dir_path.set(dir_path)
+        """Seleciona o diretório de saída"""
+        directory = filedialog.askdirectory(title="Selecionar pasta para salvar PDF")
+        if directory:
+            self.output_dir_path.set(directory)
 
     def fill_pdf(self):
-        input_pdf = "formulario.pdf" # Caminho fixo
-        output_dir = self.output_dir_path.get()
-
-        if not input_pdf or not output_dir:
-            messagebox.showerror("Erro", "Por favor, selecione o diretório de saída e certifique-se que o PDF de entrada está disponível.")
-            return
-
-        # Verificar se há uma empresa selecionada na tabela para obter o nome fantasia
-        nome_fantasia = self.nome_fantasia_var.get() # Usar a variável salva
-        if not nome_fantasia:
-            # Se não há nome fantasia salvo, tentar obter da tabela selecionada
-            selection = self.tree.selection()
-            if selection:
-                item = self.tree.item(selection[0])
-                values = item['values']
-                nome_fantasia = values[2] if len(values) > 2 else ""
-
-        data_to_fill = {
+        """Preenche o PDF com os dados fornecidos"""
+        # Coletar dados dos campos
+        data = {
             'cnpj': self.cnpj_var.get(),
             'razao_social': self.razao_social_var.get(),
+            'nome_fantasia': self.nome_fantasia_var.get(),
             'telefone': self.telefone_var.get(),
             'responsavel': self.responsavel_var.get(),
-            'data': self.data_feriado_var.get(), # Manter o campo de data do feriado
-            'municipio': self.municipio_var.get()
+            'endereco': self.endereco_var.get(),
+            'municipio': self.municipio_var.get(),
+            'data_feriado': self.data_feriado_var.get()
         }
 
-        # Chamar a função de preenchimento do módulo pdf_filler
-        filled_pdf_path = fill_pdf_document(input_pdf, output_dir, data_to_fill)
+        # Validar dados obrigatórios
+        if not data['cnpj'] or not data['razao_social'] or not data['data_feriado']:
+            messagebox.showerror("Erro", "Por favor, preencha pelo menos CNPJ, Razão Social e Data do Feriado.")
+            return
 
-        if filled_pdf_path:
-            messagebox.showinfo("Sucesso", f"PDF preenchido e salvo em: {filled_pdf_path}")
-        else:
-            messagebox.showerror("Erro", "Ocorreu um erro ao preencher o PDF. Verifique o console para mais detalhes.")
+        # Validar diretório de saída
+        output_dir = self.output_dir_path.get()
+        if not output_dir:
+            messagebox.showerror("Erro", "Por favor, selecione o local para salvar o PDF.")
+            return
+
+        # Definir caminhos
+        template_path = "formulario.pdf"
+        output_filename_limpo = data['razao_social'].replace('/', '_')
+        output_filename = f"{output_filename_limpo[:50]}.pdf"
+        output_path = os.path.join(output_dir, output_filename)
+
+        try:
+            # Verificar se o template existe
+            if not os.path.exists(template_path):
+                messagebox.showerror("Erro", f"Arquivo template não encontrado: {template_path}")
+                return
+
+            # Preencher o PDF
+            fill_pdf_document(template_path, output_path, data, self.pdf_fields)
+            
+            messagebox.showinfo("Sucesso", f"PDF preenchido com sucesso!\nSalvo em: {output_path}")
+            
+        except Exception as e:
+            messagebox.showerror("Erro", f"Erro ao preencher PDF: {str(e)}")
 
     def format_cnpj_on_type(self, event):
-        """Formata o CNPJ automaticamente enquanto o usuário digita"""
-        current_text = self.cnpj_var.get()
-        
-        # Remove caracteres não numéricos
-        numbers_only = ''.join(filter(str.isdigit, current_text))
-        
-        # Limita a 14 dígitos
-        if len(numbers_only) > 14:
-            numbers_only = numbers_only[:14]
-        
-        # Aplica formatação progressiva
-        formatted = ""
-        if len(numbers_only) >= 1:
-            formatted = numbers_only[0]
-        if len(numbers_only) >= 2:
-            formatted += "." + numbers_only[1:4]
-        if len(numbers_only) >= 5:
-            formatted += "." + numbers_only[4:7]
-        if len(numbers_only) >= 8:
-            formatted += "/" + numbers_only[7:11]
-        if len(numbers_only) >= 12:
-            formatted += "-" + numbers_only[11:13]
-        
-        # Atualiza o campo apenas se mudou
-        if formatted != current_text:
-            cursor_pos = self.cnpj_entry.index(tk.INSERT)
-            self.cnpj_var.set(formatted)
-            # Tenta manter a posição do cursor
-            try:
-                self.cnpj_entry.icursor(min(cursor_pos, len(formatted)))
-            except:
-                pass
+        """Formata o CNPJ enquanto o usuário digita"""
+        try:
+            current_text = self.cnpj_var.get()
+            cursor_position = self.cnpj_entry.index(tk.INSERT)
+            
+            # Remover caracteres não numéricos
+            numbers_only = ''.join(filter(str.isdigit, current_text))
+            
+            # Aplicar formatação se tiver pelo menos alguns dígitos
+            if len(numbers_only) > 2:
+                formatted = format_cnpj(numbers_only)
+                if formatted != current_text:
+                    self.cnpj_var.set(formatted)
+                    # Tentar manter a posição do cursor
+                    try:
+                        self.cnpj_entry.icursor(min(cursor_position + 1, len(formatted)))
+                    except:
+                        pass
+        except:
+            pass
 
     def validate_cnpj_on_focus_out(self, event):
         """Valida o CNPJ quando o campo perde o foco"""
