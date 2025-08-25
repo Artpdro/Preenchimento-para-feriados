@@ -536,7 +536,7 @@ Observações:
                     # Preencher PDF
                     template_path = "formulario.pdf"
                     if os.path.exists(template_path):
-                        fill_pdf_document(template_path, output_path, data, self.pdf_fields)
+                        fill_pdf_document(template_path, output_path, data)
                         sucessos += 1
                     else:
                         erros.append(f"{razao_social}: Arquivo template não encontrado")

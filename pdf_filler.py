@@ -33,7 +33,7 @@ def fill_pdf_document(input_pdf_path, output_dir_path, data_to_fill):
 
         # Preencher os campos com os dados
         for field_name, text_value in data_to_fill.items():
-            if field_name in pdf_fields:
+            if field_name in pdf_fields and text_value:
                 field_info = pdf_fields[field_name]
                 x = field_info["x"]
                 y = field_info["y"]
