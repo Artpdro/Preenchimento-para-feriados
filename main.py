@@ -203,8 +203,10 @@ class PDFillerApp:
         ttk.Entry(input_frame, textvariable=self.responsavel_var, width=60).grid(row=3, column=1, padx=10, pady=5, sticky="ew")
 
         # Data do Feriado
-        ttk.Label(input_frame, text="Data do Feriado:").grid(row=4, column=0, sticky="w", padx=10, pady=5)        
-        ttk.Entry(input_frame, textvariable=self.data_feriado_var, width=60).grid(row=4, column=1, padx=10, pady=5, sticky="ew")      # Frame para seleção de arquivos
+        ttk.Label(input_frame, text="Data do Feriado:").grid(row=4, column=0, sticky="w", padx=10, pady=5)
+        ttk.Entry(input_frame, textvariable=self.data_feriado_var, width=60).grid(row=4, column=1, padx=10, pady=5, sticky="ew")
+
+        # Frame para seleção de arquivos
         file_frame = ttk.LabelFrame(main_content_frame, text="Seleção de Arquivos")
         file_frame.pack(padx=10, pady=10, fill="x")
         file_frame.columnconfigure(1, weight=1)
@@ -274,16 +276,6 @@ class PDFillerApp:
         self.filter_razao_social_var.trace("w", self.filter_companies)
         filter_razao_social_entry = ttk.Entry(filter_frame, textvariable=self.filter_razao_social_var, width=30)
         filter_razao_social_entry.pack(side="left", padx=5)
-
-        # Botões de Editar e Excluir
-        edit_delete_frame = ttk.Frame(main_content_frame)
-        edit_delete_frame.pack(pady=10)
-
-        edit_button = ttk.Button(edit_delete_frame, text="Editar Empresa", command=self.edit_company)
-        edit_button.pack(side="left", padx=5)
-
-        delete_button = ttk.Button(edit_delete_frame, text="Excluir Empresa", command=self.delete_company)
-        delete_button.pack(side="left", padx=5)
 
     def create_batch_tab(self):
         """Cria a aba de preenchimento em lote"""
@@ -926,50 +918,4 @@ if __name__ == "__main__":
     root = tk.Tk()
     app = PDFillerApp(root)
     root.mainloop()
-
-
-
-    def edit_company(self):
-        """Edita os dados da empresa selecionada na tabela."""
-        selected_item = self.tree.focus()
-        if not selected_item:
-            messagebox.showwarning("Aviso", "Selecione uma empresa para editar.")
-            return
-
-        # Obter os valores atuais dos campos de entrada
-        cnpj = clean_cnpj(self.cnpj_var.get())
-        razao_social = self.razao_social_var.get()
-        nome_fantasia = self.nome_fantasia_var.get()
-        telefone = self.telefone_var.get()
-        endereco = self.endereco_var.get()
-        municipio = self.municipio_var.get()
-
-        if not validate_cnpj_format(cnpj):
-            messagebox.showerror("Erro", "CNPJ inválido. Verifique o formato.")
-            return
-
-        try:
-            self.save_company(cnpj, razao_social, nome_fantasia, telefone, endereco, municipio)
-            messagebox.showinfo("Sucesso", "Empresa atualizada com sucesso!")
-        except Exception as e:
-            messagebox.showerror("Erro", f"Erro ao atualizar empresa: {e}")
-
-    def delete_company(self):
-        """Exclui a empresa selecionada na tabela."""
-        selected_item = self.tree.focus()
-        if not selected_item:
-            messagebox.showwarning("Aviso", "Selecione uma empresa para excluir.")
-            return
-
-        cnpj = self.tree.item(selected_item, "values")[0]
-        if messagebox.askyesno("Confirmar Exclusão", f"Tem certeza que deseja excluir a empresa {cnpj}?"):
-            conn = sqlite3.connect("empresas.db")
-            cursor = conn.cursor()
-            cursor.execute("DELETE FROM empresas WHERE cnpj = ?", (cnpj,))
-            conn.commit()
-            conn.close()
-            self.load_companies()
-            self.clear_fields()
-            messagebox.showinfo("Sucesso", "Empresa excluída com sucesso!")
-
 
