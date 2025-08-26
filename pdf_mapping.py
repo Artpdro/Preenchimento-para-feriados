@@ -7,7 +7,7 @@ pdf_fields = {
     'responsavel': {'x': 100, 'y': 551, 'width': 200, 'height': 15},
     
     # Outros campos (manter se necessário, ajustar coordenadas)
-    'data': {'x': 290, 'y': 525, 'width': 120, 'height': 15},
+    'data_feriado': {'x': 290, 'y': 525, 'width': 120, 'height': 15},
     'municipio': {'x':  170, 'y': 433, 'width': 200, 'height': 15},
 
 }

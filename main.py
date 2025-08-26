@@ -81,6 +81,37 @@ class PDFillerApp:
                   background=[('active', '#E55A2B')],
                   foreground=[('active', self.colors['white'])])
 
+        # Estilos para botões CRUD
+        style.configure("Add.TButton", 
+                        font=("Arial", 10, "bold"), 
+                        padding=5, 
+                        background='#28a745', 
+                        foreground=self.colors['white'],
+                        relief="flat")
+        style.map("Add.TButton", 
+                  background=[('active', '#218838')],
+                  foreground=[('active', self.colors['white'])])
+
+        style.configure("Update.TButton", 
+                        font=("Arial", 10, "bold"), 
+                        padding=5, 
+                        background='#ffc107', 
+                        foreground=self.colors['text_dark'],
+                        relief="flat")
+        style.map("Update.TButton", 
+                  background=[('active', '#e0a800')],
+                  foreground=[('active', self.colors['text_dark'])])
+
+        style.configure("Delete.TButton", 
+                        font=("Arial", 10, "bold"), 
+                        padding=5, 
+                        background='#dc3545', 
+                        foreground=self.colors['white'],
+                        relief="flat")
+        style.map("Delete.TButton", 
+                  background=[('active', '#c82333')],
+                  foreground=[('active', self.colors['white'])])
+
         # Estilo para LabelFrames (molduras)
         style.configure("TLabelframe.Label", 
                         font=("Arial", 12, "bold"), 
@@ -118,6 +149,8 @@ class PDFillerApp:
         self.nome_fantasia_var = tk.StringVar()
         self.endereco_var = tk.StringVar()
         self.municipio_var = tk.StringVar()
+        self.email_var = tk.StringVar()
+        self.celular_var = tk.StringVar()
         
         # Variáveis para pesquisa
         self.search_term_var = tk.StringVar()
@@ -127,6 +160,9 @@ class PDFillerApp:
         self.batch_output_dir_path = tk.StringVar()
         self.batch_filter_cnpj_var = tk.StringVar()
         self.batch_filter_razao_social_var = tk.StringVar()
+
+        # Variável para controlar se estamos editando uma empresa existente
+        self.editing_company_id = None
 
         # Criar notebook (abas)
         self.notebook = ttk.Notebook(master)
@@ -194,17 +230,57 @@ class PDFillerApp:
         ttk.Label(input_frame, text="Nome da empresa (Razão social):").grid(row=1, column=0, sticky="w", padx=10, pady=5)        
         ttk.Entry(input_frame, textvariable=self.razao_social_var, width=60).grid(row=1, column=1, padx=10, pady=5, sticky="ew")
 
+        # Nome Fantasia
+        ttk.Label(input_frame, text="Nome Fantasia:").grid(row=2, column=0, sticky="w", padx=10, pady=5)        
+        ttk.Entry(input_frame, textvariable=self.nome_fantasia_var, width=60).grid(row=2, column=1, padx=10, pady=5, sticky="ew")
+
+        # Email
+        ttk.Label(input_frame, text="Email:").grid(row=3, column=0, sticky="w", padx=10, pady=5)
+        ttk.Entry(input_frame, textvariable=self.email_var, width=60).grid(row=3, column=1, padx=10, pady=5, sticky="ew")
+
         # Telefone
-        ttk.Label(input_frame, text="Telefone:").grid(row=2, column=0, sticky="w", padx=10, pady=5)
-        ttk.Entry(input_frame, textvariable=self.telefone_var, width=60).grid(row=2, column=1, padx=10, pady=5, sticky="ew")
+        ttk.Label(input_frame, text="Telefone:").grid(row=4, column=0, sticky="w", padx=10, pady=5)
+        ttk.Entry(input_frame, textvariable=self.telefone_var, width=60).grid(row=4, column=1, padx=10, pady=5, sticky="ew")
+
+        # Celular
+        ttk.Label(input_frame, text="Celular:").grid(row=5, column=0, sticky="w", padx=10, pady=5)
+        ttk.Entry(input_frame, textvariable=self.celular_var, width=60).grid(row=5, column=1, padx=10, pady=5, sticky="ew")
+
+        # Endereço
+        ttk.Label(input_frame, text="Endereço:").grid(row=6, column=0, sticky="w", padx=10, pady=5)
+        ttk.Entry(input_frame, textvariable=self.endereco_var, width=60).grid(row=6, column=1, padx=10, pady=5, sticky="ew")
+
+        # Município
+        ttk.Label(input_frame, text="Município:").grid(row=7, column=0, sticky="w", padx=10, pady=5)
+        ttk.Entry(input_frame, textvariable=self.municipio_var, width=60).grid(row=7, column=1, padx=10, pady=5, sticky="ew")
 
         # Responsável
-        ttk.Label(input_frame, text="Responsável:").grid(row=3, column=0, sticky="w", padx=10, pady=5)
-        ttk.Entry(input_frame, textvariable=self.responsavel_var, width=60).grid(row=3, column=1, padx=10, pady=5, sticky="ew")
+        ttk.Label(input_frame, text="Responsável:").grid(row=8, column=0, sticky="w", padx=10, pady=5)
+        ttk.Entry(input_frame, textvariable=self.responsavel_var, width=60).grid(row=8, column=1, padx=10, pady=5, sticky="ew")
 
         # Data do Feriado
-        ttk.Label(input_frame, text="Data do Feriado:").grid(row=4, column=0, sticky="w", padx=10, pady=5)
-        ttk.Entry(input_frame, textvariable=self.data_feriado_var, width=60).grid(row=4, column=1, padx=10, pady=5, sticky="ew")
+        ttk.Label(input_frame, text="Data do Feriado:").grid(row=9, column=0, sticky="w", padx=10, pady=5)
+        ttk.Entry(input_frame, textvariable=self.data_feriado_var, width=60).grid(row=9, column=1, padx=10, pady=5, sticky="ew")
+
+        # Frame para botões CRUD
+        crud_frame = ttk.LabelFrame(main_content_frame, text="Gerenciar Empresas")
+        crud_frame.pack(padx=10, pady=10, fill="x")
+
+        # Botões CRUD
+        buttons_frame = tk.Frame(crud_frame, bg=self.colors['light_gray'])
+        buttons_frame.pack(pady=10)
+
+        ttk.Button(buttons_frame, text="Adicionar Empresa", 
+                  command=self.add_company, style="Add.TButton").pack(side="left", padx=5)
+        
+        ttk.Button(buttons_frame, text="Atualizar Empresa", 
+                  command=self.update_company, style="Update.TButton").pack(side="left", padx=5)
+        
+        ttk.Button(buttons_frame, text="Deletar Empresa", 
+                  command=self.delete_company, style="Delete.TButton").pack(side="left", padx=5)
+        
+        ttk.Button(buttons_frame, text="Limpar Campos", 
+                  command=self.clear_fields, style="TButton").pack(side="left", padx=5)
 
         # Frame para seleção de arquivos
         file_frame = ttk.LabelFrame(main_content_frame, text="Seleção de Arquivos")
@@ -225,7 +301,7 @@ class PDFillerApp:
         table_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
         # Criar a tabela (Treeview)
-        columns = ("CNPJ", "Nome da Empresa", "Nome Fantasia", "Telefone", "Endereço", "Município")
+        columns = ("CNPJ", "Razão Social", "Nome Fantasia", "Email", "Telefone", "Celular", "Endereço", "Município")
         self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=15)
         
         # Configurar cabeçalhos
@@ -233,16 +309,20 @@ class PDFillerApp:
             self.tree.heading(col, text=col)
             if col == "CNPJ":
                 self.tree.column(col, width=120, minwidth=100)
-            elif col == "Nome da Empresa":
+            elif col == "Razão Social":
                 self.tree.column(col, width=150, minwidth=120)
             elif col == "Nome Fantasia":
+                self.tree.column(col, width=120, minwidth=100)
+            elif col == "Email":
                 self.tree.column(col, width=150, minwidth=120)
             elif col == "Telefone":
                 self.tree.column(col, width=100, minwidth=80)
+            elif col == "Celular":
+                self.tree.column(col, width=100, minwidth=80)
             elif col == "Endereço":
-                self.tree.column(col, width=250, minwidth=200)
+                self.tree.column(col, width=200, minwidth=150)
             elif col == "Município":
-                self.tree.column(col, width=150, minwidth=100)
+                self.tree.column(col, width=120, minwidth=100)
 
         # Scrollbars para a tabela
         v_scrollbar = ttk.Scrollbar(table_frame, orient="vertical", command=self.tree.yview)
@@ -327,7 +407,7 @@ class PDFillerApp:
         batch_table_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
         # Criar a tabela (Treeview) para seleção em lote
-        columns = ("CNPJ", "Nome da Empresa", "Nome Fantasia", "Telefone", "Endereço", "Município")
+        columns = ("CNPJ", "Razão Social", "Nome Fantasia", "Email", "Telefone", "Celular", "Endereço", "Município")
         self.batch_tree = ttk.Treeview(batch_table_frame, columns=columns, show="headings", height=10, selectmode="extended")
         
         # Configurar cabeçalhos
@@ -335,14 +415,18 @@ class PDFillerApp:
             self.batch_tree.heading(col, text=col)
             if col == "CNPJ":
                 self.batch_tree.column(col, width=100, minwidth=80)
-            elif col == "Nome da Empresa":
+            elif col == "Razão Social":
                 self.batch_tree.column(col, width=120, minwidth=100)
             elif col == "Nome Fantasia":
+                self.batch_tree.column(col, width=100, minwidth=80)
+            elif col == "Email":
                 self.batch_tree.column(col, width=120, minwidth=100)
             elif col == "Telefone":
                 self.batch_tree.column(col, width=80, minwidth=60)
+            elif col == "Celular":
+                self.batch_tree.column(col, width=80, minwidth=60)
             elif col == "Endereço":
-                self.batch_tree.column(col, width=200, minwidth=150)
+                self.batch_tree.column(col, width=150, minwidth=120)
             elif col == "Município":
                 self.batch_tree.column(col, width=100, minwidth=80)
 
@@ -365,118 +449,261 @@ class PDFillerApp:
         batch_filter_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=5, pady=5)
         
         ttk.Label(batch_filter_frame, text="Filtrar por CNPJ:").pack(side="left", padx=5)
+        self.batch_filter_cnpj_var = tk.StringVar()
         self.batch_filter_cnpj_var.trace("w", self.filter_batch_companies)
         batch_filter_cnpj_entry = ttk.Entry(batch_filter_frame, textvariable=self.batch_filter_cnpj_var, width=20)
         batch_filter_cnpj_entry.pack(side="left", padx=5)
 
         ttk.Label(batch_filter_frame, text="Filtrar por Nome/Fantasia:").pack(side="left", padx=5)
+        self.batch_filter_razao_social_var = tk.StringVar()
         self.batch_filter_razao_social_var.trace("w", self.filter_batch_companies)
         batch_filter_razao_social_entry = ttk.Entry(batch_filter_frame, textvariable=self.batch_filter_razao_social_var, width=30)
         batch_filter_razao_social_entry.pack(side="left", padx=5)
 
-        # Botões de seleção
-        selection_buttons_frame = ttk.Frame(batch_table_frame)
-        selection_buttons_frame.grid(row=3, column=0, columnspan=2, pady=5)
-        ttk.Button(selection_buttons_frame, text="Selecionar Todas", command=self.select_all_batch_companies).pack(side="left", padx=5)
-        ttk.Button(selection_buttons_frame, text="Desselecionar Todas", command=self.deselect_all_batch_companies).pack(side="left", padx=5)
+        # Botões para seleção em lote
+        batch_selection_frame = tk.Frame(main_content_frame, bg=self.colors["light_gray"])
+        batch_selection_frame.pack(pady=10)
+
+        ttk.Button(batch_selection_frame, text="Selecionar Todas", command=self.select_all_companies).pack(side="left", padx=5)
+        ttk.Button(batch_selection_frame, text="Desmarcar Todas", command=self.deselect_all_companies).pack(side="left", padx=5)
 
         # Botão de Preenchimento em Lote
-        batch_fill_button = ttk.Button(main_content_frame, text="Preencher PDFs das Empresas Selecionadas", 
-                                      command=self.fill_batch_pdf, style="Batch.TButton")
-        batch_fill_button.pack(pady=20)
+        batch_fill_button = ttk.Button(main_content_frame, text="Preencher PDFs em Lote", 
+                                      command=self.fill_batch_pdfs, style="Batch.TButton")
+        batch_fill_button.pack(pady=10)
 
-        # Texto informativo
-        info_text = tk.Text(main_content_frame, height=5, wrap=tk.WORD, font=("Arial", 10))
-        info_text.pack(padx=10, pady=10, fill="x")
+    # Métodos CRUD para empresas
+    def add_company(self):
+        """Adiciona uma nova empresa ao banco de dados"""
+        # Validar campos obrigatórios
+        cnpj = self.cnpj_var.get().strip()
+        razao_social = self.razao_social_var.get().strip()
         
-        info_content = """PREENCHIMENTO EM LOTE
+        if not cnpj or not razao_social:
+            messagebox.showerror("Erro", "CNPJ e Razão Social são obrigatórios!")
+            return
+        
+        # Validar formato do CNPJ
+        if not validate_cnpj_format(cnpj):
+            messagebox.showerror("Erro", "CNPJ deve ter formato válido (XX.XXX.XXX/XXXX-XX)!")
+            return
+        
+        try:
+            conn = sqlite3.connect('empresas.db')
+            cursor = conn.cursor()
+            
+            # Verificar se o CNPJ já existe
+            cnpj_clean = clean_cnpj(cnpj)
+            cursor.execute("SELECT cnpj FROM empresas WHERE REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') = ?", (cnpj_clean,))
+            if cursor.fetchone():
+                messagebox.showerror("Erro", "CNPJ já cadastrado!")
+                conn.close()
+                return
+            
+            # Inserir nova empresa (adaptado para a estrutura real da tabela)
+            cursor.execute("""
+                INSERT INTO empresas (cnpj, razao_social, nome_fantasia, email, telefone, celular, endereco, cidade)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            """, (
+                cnpj,
+                razao_social,
+                self.nome_fantasia_var.get().strip(),
+                self.email_var.get().strip(),
+                self.telefone_var.get().strip(),
+                self.celular_var.get().strip(),
+                self.endereco_var.get().strip(),
+                self.municipio_var.get().strip()
+            ))
+            
+            conn.commit()
+            conn.close()
+            
+            messagebox.showinfo("Sucesso", "Empresa adicionada com sucesso!")
+            self.load_companies()
+            self.clear_fields()
+            
+        except sqlite3.Error as e:
+            messagebox.showerror("Erro", f"Erro ao adicionar empresa: {e}")
 
-Esta funcionalidade permite preencher PDFs para as empresas selecionadas na tabela abaixo.
+    def update_company(self):
+        """Atualiza uma empresa existente no banco de dados"""
+        # Verificar se uma empresa está selecionada
+        selection = self.tree.selection()
+        if not selection:
+            messagebox.showwarning("Aviso", "Selecione uma empresa na tabela para atualizar!")
+            return
+        
+        # Validar campos obrigatórios
+        cnpj = self.cnpj_var.get().strip()
+        razao_social = self.razao_social_var.get().strip()
+        
+        if not cnpj or not razao_social:
+            messagebox.showerror("Erro", "CNPJ e Razão Social são obrigatórios!")
+            return
+        
+        # Validar formato do CNPJ
+        if not validate_cnpj_format(cnpj):
+            messagebox.showerror("Erro", "CNPJ deve ter formato válido (XX.XXX.XXX/XXXX-XX)!")
+            return
+        
+        try:
+            conn = sqlite3.connect('empresas.db')
+            cursor = conn.cursor()
+            
+            # Obter CNPJ original da empresa selecionada
+            item = self.tree.item(selection[0])
+            original_cnpj = item['values'][0]
+            original_cnpj_clean = clean_cnpj(original_cnpj)
+            
+            # Se o CNPJ foi alterado, verificar se o novo CNPJ já existe
+            cnpj_clean = clean_cnpj(cnpj)
+            if cnpj_clean != original_cnpj_clean:
+                cursor.execute("SELECT cnpj FROM empresas WHERE REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') = ?", (cnpj_clean,))
+                if cursor.fetchone():
+                    messagebox.showerror("Erro", "CNPJ já cadastrado para outra empresa!")
+                    conn.close()
+                    return
+            
+            # Atualizar empresa (adaptado para a estrutura real da tabela)
+            cursor.execute("""
+                UPDATE empresas 
+                SET cnpj = ?, razao_social = ?, nome_fantasia = ?, email = ?, telefone = ?, celular = ?, endereco = ?, cidade = ?
+                WHERE REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') = ?
+            """, (
+                cnpj,
+                razao_social,
+                self.nome_fantasia_var.get().strip(),
+                self.email_var.get().strip(),
+                self.telefone_var.get().strip(),
+                self.celular_var.get().strip(),
+                self.endereco_var.get().strip(),
+                self.municipio_var.get().strip(),
+                original_cnpj_clean
+            ))
+            
+            conn.commit()
+            conn.close()
+            
+            messagebox.showinfo("Sucesso", "Empresa atualizada com sucesso!")
+            self.load_companies()
+            self.clear_fields()
+            
+        except sqlite3.Error as e:
+            messagebox.showerror("Erro", f"Erro ao atualizar empresa: {e}")
 
-Como usar:
-1. Digite a data do feriado no formato DD/MM/AAAA
-2. Selecione as empresas desejadas na tabela (use Ctrl/Cmd para seleção múltipla)
-3. Selecione a pasta onde os PDFs preenchidos serão salvos
-4. Clique em "Preencher PDFs das Empresas Selecionadas"
+    def delete_company(self):
+        """Deleta uma empresa do banco de dados"""
+        # Verificar se uma empresa está selecionada
+        selection = self.tree.selection()
+        if not selection:
+            messagebox.showwarning("Aviso", "Selecione uma empresa na tabela para deletar!")
+            return
+        
+        # Obter dados da empresa selecionada
+        item = self.tree.item(selection[0])
+        cnpj = item['values'][0]
+        razao_social = item['values'][1]
+        
+        # Confirmar exclusão
+        if not messagebox.askyesno("Confirmar Exclusão", 
+                                   f"Tem certeza que deseja deletar a empresa:\n{razao_social}\nCNPJ: {cnpj}?"):
+            return
+        
+        try:
+            conn = sqlite3.connect('empresas.db')
+            cursor = conn.cursor()
+            
+            # Deletar empresa
+            cnpj_clean = clean_cnpj(cnpj)
+            cursor.execute("DELETE FROM empresas WHERE REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') = ?", (cnpj_clean,))
+            
+            conn.commit()
+            conn.close()
+            
+            messagebox.showinfo("Sucesso", "Empresa deletada com sucesso!")
+            self.load_companies()
+            self.clear_fields()
+            
+        except sqlite3.Error as e:
+            messagebox.showerror("Erro", f"Erro ao deletar empresa: {e}")
 
-Observações:
-• Certifique-se de que há espaço suficiente na pasta de destino
-• O processo pode demorar alguns minutos dependendo da quantidade de empresas selecionadas
-• Empresas sem dados completos serão puladas e listadas no relatório final"""
-
-        info_text.insert(tk.END, info_content)
-        info_text.config(state=tk.DISABLED)
+    def clear_fields(self):
+        """Limpa todos os campos de entrada"""
+        self.cnpj_var.set("")
+        self.razao_social_var.set("")
+        self.nome_fantasia_var.set("")
+        self.email_var.set("")
+        self.telefone_var.set("")
+        self.celular_var.set("")
+        self.endereco_var.set("")
+        self.municipio_var.set("")
+        self.responsavel_var.set("")
+        self.data_feriado_var.set("")
+        self.editing_company_id = None
 
     def select_batch_output_dir(self):
-        """Seleciona o diretório de saída para preenchimento em lote"""
+        """Seleciona o diretório de saída para lote"""
         directory = filedialog.askdirectory(title="Selecionar pasta para salvar PDFs em lote")
         if directory:
             self.batch_output_dir_path.set(directory)
 
-    def select_all_batch_companies(self):
-        """Seleciona todas as empresas visíveis na tabela de lote"""
+    def select_all_companies(self):
+        """Seleciona todas as empresas na tabela de lote"""
         for item in self.batch_tree.get_children():
             self.batch_tree.selection_add(item)
 
-    def deselect_all_batch_companies(self):
-        """Desseleciona todas as empresas na tabela de lote"""
+    def deselect_all_companies(self):
+        """Desmarca todas as empresas na tabela de lote"""
         self.batch_tree.selection_remove(self.batch_tree.selection())
 
-    def fill_batch_pdf(self):
-        """Preenche PDFs para as empresas selecionadas"""
-        # Validar entrada
-        data_feriado = self.batch_data_feriado_var.get().strip()
-        output_dir = self.batch_output_dir_path.get().strip()
+    def fill_batch_pdfs(self):
+        """Preenche PDFs em lote para as empresas selecionadas"""
+        # Validar seleção
         selected_items = self.batch_tree.selection()
-
-        if not data_feriado:
-            messagebox.showerror("Erro", "Por favor, informe a data do feriado.")
-            return
-
-        if not output_dir:
-            messagebox.showerror("Erro", "Por favor, selecione a pasta de destino.")
-            return
-
         if not selected_items:
-            messagebox.showwarning("Aviso", "Por favor, selecione pelo menos uma empresa na tabela.")
+            messagebox.showwarning("Aviso", "Selecione pelo menos uma empresa para preencher!")
             return
 
-        # Validar formato da data
-        try:
-            datetime.strptime(data_feriado, "%d/%m/%Y")
-        except ValueError:
-            messagebox.showerror("Erro", "Data inválida. Use o formato DD/MM/AAAA.")
+        # Validar data do feriado
+        data_feriado = self.batch_data_feriado_var.get().strip()
+        if not data_feriado:
+            messagebox.showerror("Erro", "Por favor, informe a data do feriado!")
             return
 
-        # Coletar dados das empresas selecionadas
-        empresas_selecionadas = []
-        for item_id in selected_items:
-            values = self.batch_tree.item(item_id, 'values')
-            # CNPJ, Razão Social, Nome Fantasia, Telefone, Endereço, Município
-            empresas_selecionadas.append({
-                'cnpj': values[0],
-                'razao_social': values[1],
-                'nome_fantasia': values[2],
-                'telefone': values[3],
-                'endereco': values[4],
-                'municipio': values[5]
-            })
+        # Validar diretório de saída
+        output_dir = self.batch_output_dir_path.get()
+        if not output_dir:
+            messagebox.showerror("Erro", "Por favor, selecione a pasta de destino!")
+            return
 
-        # Confirmar operação
-        result = messagebox.askyesno("Confirmar", 
-                                   f"Deseja preencher PDFs para {len(empresas_selecionadas)} empresas selecionadas?\n\n"
-                                   f"Data do feriado: {data_feriado}\n"
-                                   f"Pasta de destino: {output_dir}")
-        if not result:
+        # Verificar se o template existe
+        template_path = "formulario.pdf"
+        if not os.path.exists(template_path):
+            messagebox.showerror("Erro", f"Arquivo template não encontrado: {template_path}")
             return
 
         try:
-            # Contadores para relatório
+            # Coletar dados das empresas selecionadas
+            empresas_selecionadas = []
+            for item in selected_items:
+                values = self.batch_tree.item(item)['values']
+                empresa_data = {
+                    'cnpj': values[0],
+                    'razao_social': values[1],
+                    'nome_fantasia': values[2],
+                    'email': values[3],
+                    'telefone': values[4],
+                    'celular': values[5],
+                    'endereco': values[6],
+                    'municipio': values[7]
+                }
+                empresas_selecionadas.append(empresa_data)
+
             total_empresas = len(empresas_selecionadas)
             sucessos = 0
             erros = []
 
-            # Criar barra de progresso
+            # Criar janela de progresso
             progress_window = tk.Toplevel(self.master)
             progress_window.title("Processando...")
             progress_window.geometry("400x150")
@@ -484,20 +711,22 @@ Observações:
             progress_window.transient(self.master)
             progress_window.grab_set()
 
-            # Centralizar janela de progresso
-            progress_window.geometry("+%d+%d" % (
-                self.master.winfo_rootx() + 50,
-                self.master.winfo_rooty() + 50
-            ))
+            # Centralizar janela
+            progress_window.update_idletasks()
+            x = (progress_window.winfo_screenwidth() // 2) - (400 // 2)
+            y = (progress_window.winfo_screenheight() // 2) - (150 // 2)
+            progress_window.geometry(f"400x150+{x}+{y}")
 
-            progress_label = ttk.Label(progress_window, text="Iniciando processamento...")
+            # Widgets da janela de progresso
+            progress_label = tk.Label(progress_window, text=f"Processando 0 de {total_empresas} empresas...", 
+                                    font=("Arial", 12))
             progress_label.pack(pady=10)
 
             progress_bar = ttk.Progressbar(progress_window, length=300, mode='determinate')
             progress_bar.pack(pady=10)
             progress_bar['maximum'] = total_empresas
 
-            status_label = ttk.Label(progress_window, text="")
+            status_label = tk.Label(progress_window, text="Iniciando...", font=("Arial", 10))
             status_label.pack(pady=5)
 
             # Processar cada empresa selecionada
@@ -505,7 +734,9 @@ Observações:
                 cnpj_formatted = empresa_data['cnpj']
                 razao_social = empresa_data['razao_social']
                 nome_fantasia = empresa_data['nome_fantasia']
+                email = empresa_data['email']
                 telefone = empresa_data['telefone']
+                celular = empresa_data['celular']
                 endereco = empresa_data['endereco']
                 municipio = empresa_data['municipio']
                 
@@ -521,7 +752,9 @@ Observações:
                         'cnpj': cnpj_formatted,
                         'razao_social': razao_social or '',
                         'nome_fantasia': nome_fantasia or '',
+                        'email': email or '',
                         'telefone': telefone or '',
+                        'celular': celular or '',
                         'responsavel': '', # Responsável não está na tabela de empresas
                         'endereco': endereco or '',
                         'municipio': municipio or '',
@@ -534,7 +767,6 @@ Observações:
                     output_path = os.path.join(output_dir, nome_arquivo)
 
                     # Preencher PDF
-                    template_path = "formulario.pdf"
                     if os.path.exists(template_path):
                         fill_pdf_document(template_path, output_dir, data)
                         sucessos += 1
@@ -582,7 +814,7 @@ Observações:
             
             # Pesquisar por CNPJ (exato) ou razão social/nome fantasia (parcial)
             cursor.execute("""
-                SELECT cnpj, razao_social, nome_fantasia, telefone, responsavel, endereco, cidade
+                SELECT cnpj, razao_social, nome_fantasia, email, telefone, celular, endereco, cidade
                 FROM empresas 
                 WHERE REPLACE(REPLACE(REPLACE(cnpj, ".", ""), "/", ""), "-", "") LIKE ? 
                    OR UPPER(razao_social) LIKE UPPER(?) 
@@ -607,17 +839,19 @@ Observações:
                 
                 razao_social = result[1] or ''
                 nome_fantasia = result[2] or ''
-                telefone = result[3] or ''
-                responsavel = result[4] or ''
-                endereco = result[5] or ''
-                municipio = result[6] or ''
+                email = result[3] or ''
+                telefone = str(result[4]).replace('.0', '') if result[4] else ''
+                celular = str(result[5]).replace('.0', '') if result[5] else ''
+                endereco = result[6] or ''
+                municipio = result[7] or ''
                 
                 # Preencher os campos da interface
                 self.cnpj_var.set(cnpj_formatted)
                 self.razao_social_var.set(razao_social)
                 self.nome_fantasia_var.set(nome_fantasia)
+                self.email_var.set(email)
                 self.telefone_var.set(telefone)
-                self.responsavel_var.set(responsavel)
+                self.celular_var.set(celular)
                 self.endereco_var.set(endereco)
                 self.municipio_var.set(municipio)
                 # Limpar campo de pesquisa
@@ -658,7 +892,7 @@ Observações:
             cursor = conn.cursor()
             
             cursor.execute("""
-                SELECT cnpj, razao_social, nome_fantasia, telefone, endereco, cidade
+                SELECT cnpj, razao_social, nome_fantasia, email, telefone, celular, endereco, cidade
                 FROM empresas 
                 ORDER BY razao_social
             """)
@@ -682,9 +916,11 @@ Observações:
                     cnpj_formatted,
                     company[1] or '',  # razao_social
                     company[2] or '',  # nome_fantasia
-                    company[3] or '',  # telefone
-                    company[4] or '',  # endereco
-                    company[5] or ''   # cidade
+                    company[3] or '',  # email
+                    str(company[4]).replace('.0', '') if company[4] else '',  # telefone
+                    str(company[5]).replace('.0', '') if company[5] else '',  # celular
+                    company[6] or '',  # endereco
+                    company[7] or ''   # cidade
                 )
                 self.tree.insert('', 'end', values=values)
                 self.batch_tree.insert('', 'end', values=values)
@@ -710,7 +946,7 @@ Observações:
             
             # Construir query com filtros
             query = """
-                SELECT cnpj, razao_social, nome_fantasia, telefone, endereco, cidade
+                SELECT cnpj, razao_social, nome_fantasia, email, telefone, celular, endereco, cidade
                 FROM empresas 
                 WHERE 1=1
             """
@@ -742,9 +978,11 @@ Observações:
                     cnpj_formatted,
                     company[1] or '',  # razao_social
                     company[2] or '',  # nome_fantasia
-                    company[3] or '',  # telefone
-                    company[4] or '',  # endereco
-                    company[5] or ''   # cidade
+                    company[3] or '',  # email
+                    str(company[4]).replace('.0', '') if company[4] else '',  # telefone
+                    str(company[5]).replace('.0', '') if company[5] else '',  # celular
+                    company[6] or '',  # endereco
+                    company[7] or ''   # cidade
                 )
                 self.tree.insert('', 'end', values=values)
             
@@ -769,7 +1007,7 @@ Observações:
             
             # Construir query com filtros
             query = """
-                SELECT cnpj, razao_social, nome_fantasia, telefone, endereco, cidade
+                SELECT cnpj, razao_social, nome_fantasia, email, telefone, celular, endereco, cidade
                 FROM empresas 
                 WHERE 1=1
             """
@@ -801,9 +1039,11 @@ Observações:
                     cnpj_formatted,
                     company[1] or '',  # razao_social
                     company[2] or '',  # nome_fantasia
-                    company[3] or '',  # telefone
-                    company[4] or '',  # endereco
-                    company[5] or ''   # cidade
+                    company[3] or '',  # email
+                    str(company[4]).replace('.0', '') if company[4] else '',  # telefone
+                    str(company[5]).replace('.0', '') if company[5] else '',  # celular
+                    company[6] or '',  # endereco
+                    company[7] or ''   # cidade
                 )
                 self.batch_tree.insert('', 'end', values=values)
             
@@ -823,9 +1063,11 @@ Observações:
                 self.cnpj_var.set(values[0])
                 self.razao_social_var.set(values[1])
                 self.nome_fantasia_var.set(values[2])
-                self.telefone_var.set(values[3])
-                self.endereco_var.set(values[4])
-                self.municipio_var.set(values[5])
+                self.email_var.set(values[3])
+                self.telefone_var.set(values[4])
+                self.celular_var.set(values[5])
+                self.endereco_var.set(values[6])
+                self.municipio_var.set(values[7])
 
     def select_output_dir(self):
         """Seleciona o diretório de saída"""
@@ -840,7 +1082,9 @@ Observações:
             'cnpj': self.cnpj_var.get(),
             'razao_social': self.razao_social_var.get(),
             'nome_fantasia': self.nome_fantasia_var.get(),
+            'email': self.email_var.get(),
             'telefone': self.telefone_var.get(),
+            'celular': self.celular_var.get(),
             'responsavel': self.responsavel_var.get(),
             'endereco': self.endereco_var.get(),
             'municipio': self.municipio_var.get(),
@@ -894,28 +1138,24 @@ Observações:
                     self.cnpj_var.set(formatted)
                     # Tentar manter a posição do cursor
                     try:
-                        self.cnpj_entry.icursor(min(cursor_position + 1, len(formatted)))
+                        self.cnpj_entry.icursor(min(cursor_position, len(formatted)))
                     except:
                         pass
-        except:
-            pass
+        except Exception as e:
+            print(f"Erro na formatação do CNPJ: {e}")
 
     def validate_cnpj_on_focus_out(self, event):
         """Valida o CNPJ quando o campo perde o foco"""
-        cnpj_text = self.cnpj_var.get().strip()
-        
-        if cnpj_text and not validate_cnpj_format(cnpj_text):
-            # Se tem texto mas não está no formato correto, tenta formatar
-            numbers_only = clean_cnpj(cnpj_text)
-            if len(numbers_only) == 14:
-                formatted_cnpj = format_cnpj(numbers_only)
-                self.cnpj_var.set(formatted_cnpj)
-            elif len(numbers_only) > 0:
-                messagebox.showwarning("CNPJ Inválido", 
-                                     f"CNPJ deve ter 14 dígitos. Você digitou {len(numbers_only)} dígitos.")
+        cnpj = self.cnpj_var.get()
+        if cnpj and not validate_cnpj_format(cnpj):
+            messagebox.showwarning("CNPJ Inválido", "O CNPJ deve ter o formato: XX.XXX.XXX/XXXX-XX")
+            self.cnpj_entry.focus_set()
 
-if __name__ == "__main__":
+def main():
     root = tk.Tk()
     app = PDFillerApp(root)
     root.mainloop()
+
+if __name__ == "__main__":
+    main()
 
