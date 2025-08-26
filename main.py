@@ -148,9 +148,6 @@ class PDFillerApp:
         self.output_dir_path = tk.StringVar()
         self.nome_fantasia_var = tk.StringVar()
         self.endereco_var = tk.StringVar()
-        self.municipio_var = tk.StringVar()
-        self.email_var = tk.StringVar()
-        self.celular_var = tk.StringVar()
         
         # Variáveis para pesquisa
         self.search_term_var = tk.StringVar()
@@ -234,25 +231,19 @@ class PDFillerApp:
         ttk.Label(input_frame, text="Nome Fantasia:").grid(row=2, column=0, sticky="w", padx=10, pady=5)        
         ttk.Entry(input_frame, textvariable=self.nome_fantasia_var, width=60).grid(row=2, column=1, padx=10, pady=5, sticky="ew")
 
-        # Email
-        ttk.Label(input_frame, text="Email:").grid(row=3, column=0, sticky="w", padx=10, pady=5)
-        ttk.Entry(input_frame, textvariable=self.email_var, width=60).grid(row=3, column=1, padx=10, pady=5, sticky="ew")
+
 
         # Telefone
         ttk.Label(input_frame, text="Telefone:").grid(row=4, column=0, sticky="w", padx=10, pady=5)
         ttk.Entry(input_frame, textvariable=self.telefone_var, width=60).grid(row=4, column=1, padx=10, pady=5, sticky="ew")
 
-        # Celular
-        ttk.Label(input_frame, text="Celular:").grid(row=5, column=0, sticky="w", padx=10, pady=5)
-        ttk.Entry(input_frame, textvariable=self.celular_var, width=60).grid(row=5, column=1, padx=10, pady=5, sticky="ew")
+
 
         # Endereço
         ttk.Label(input_frame, text="Endereço:").grid(row=6, column=0, sticky="w", padx=10, pady=5)
         ttk.Entry(input_frame, textvariable=self.endereco_var, width=60).grid(row=6, column=1, padx=10, pady=5, sticky="ew")
 
-        # Município
-        ttk.Label(input_frame, text="Município:").grid(row=7, column=0, sticky="w", padx=10, pady=5)
-        ttk.Entry(input_frame, textvariable=self.municipio_var, width=60).grid(row=7, column=1, padx=10, pady=5, sticky="ew")
+
 
         # Responsável
         ttk.Label(input_frame, text="Responsável:").grid(row=8, column=0, sticky="w", padx=10, pady=5)
@@ -279,8 +270,6 @@ class PDFillerApp:
         ttk.Button(buttons_frame, text="Deletar Empresa", 
                   command=self.delete_company, style="Delete.TButton").pack(side="left", padx=5)
         
-        ttk.Button(buttons_frame, text="Limpar Campos", 
-                  command=self.clear_fields, style="TButton").pack(side="left", padx=5)
 
         # Frame para seleção de arquivos
         file_frame = ttk.LabelFrame(main_content_frame, text="Seleção de Arquivos")
@@ -301,7 +290,7 @@ class PDFillerApp:
         table_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
         # Criar a tabela (Treeview)
-        columns = ("CNPJ", "Razão Social", "Nome Fantasia", "Email", "Telefone", "Celular", "Endereço", "Município")
+        columns = ("CNPJ", "Razão Social", "Nome Fantasia", "Telefone", "Endereço", "Responsável")
         self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=15)
         
         # Configurar cabeçalhos
@@ -312,16 +301,6 @@ class PDFillerApp:
             elif col == "Razão Social":
                 self.tree.column(col, width=150, minwidth=120)
             elif col == "Nome Fantasia":
-                self.tree.column(col, width=120, minwidth=100)
-            elif col == "Email":
-                self.tree.column(col, width=150, minwidth=120)
-            elif col == "Telefone":
-                self.tree.column(col, width=100, minwidth=80)
-            elif col == "Celular":
-                self.tree.column(col, width=100, minwidth=80)
-            elif col == "Endereço":
-                self.tree.column(col, width=200, minwidth=150)
-            elif col == "Município":
                 self.tree.column(col, width=120, minwidth=100)
 
         # Scrollbars para a tabela
@@ -407,7 +386,7 @@ class PDFillerApp:
         batch_table_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
         # Criar a tabela (Treeview) para seleção em lote
-        columns = ("CNPJ", "Razão Social", "Nome Fantasia", "Email", "Telefone", "Celular", "Endereço", "Município")
+        columns = ("CNPJ", "Razão Social", "Nome Fantasia", "Telefone", "Endereço", "Responsável")
         self.batch_tree = ttk.Treeview(batch_table_frame, columns=columns, show="headings", height=10, selectmode="extended")
         
         # Configurar cabeçalhos
@@ -509,10 +488,7 @@ class PDFillerApp:
                 razao_social,
                 self.nome_fantasia_var.get().strip(),
                 self.email_var.get().strip(),
-                self.telefone_var.get().strip(),
-                self.celular_var.get().strip(),
-                self.endereco_var.get().strip(),
-                self.municipio_var.get().strip()
+                self.telefone_var.get().strip()
             ))
             
             conn.commit()
@@ -567,17 +543,15 @@ class PDFillerApp:
             # Atualizar empresa (adaptado para a estrutura real da tabela)
             cursor.execute("""
                 UPDATE empresas 
-                SET cnpj = ?, razao_social = ?, nome_fantasia = ?, email = ?, telefone = ?, celular = ?, endereco = ?, cidade = ?
-                WHERE REPLACE(REPLACE(REPLACE(cnpj, '.', ''), '/', ''), '-', '') = ?
+                SET cnpj = ?, razao_social = ?, nome_fantasia = ?, telefone = ?, endereco = ?, responsavel = ?
+                WHERE REPLACE(REPLACE(REPLACE(cnpj, ".", ""), "/", ""), "-", "") = ?
             """, (
                 cnpj,
                 razao_social,
                 self.nome_fantasia_var.get().strip(),
-                self.email_var.get().strip(),
                 self.telefone_var.get().strip(),
-                self.celular_var.get().strip(),
                 self.endereco_var.get().strip(),
-                self.municipio_var.get().strip(),
+                self.responsavel_var.get().strip(),
                 original_cnpj_clean
             ))
             
@@ -632,11 +606,8 @@ class PDFillerApp:
         self.cnpj_var.set("")
         self.razao_social_var.set("")
         self.nome_fantasia_var.set("")
-        self.email_var.set("")
         self.telefone_var.set("")
-        self.celular_var.set("")
         self.endereco_var.set("")
-        self.municipio_var.set("")
         self.responsavel_var.set("")
         self.data_feriado_var.set("")
         self.editing_company_id = None
@@ -691,11 +662,9 @@ class PDFillerApp:
                     'cnpj': values[0],
                     'razao_social': values[1],
                     'nome_fantasia': values[2],
-                    'email': values[3],
-                    'telefone': values[4],
-                    'celular': values[5],
-                    'endereco': values[6],
-                    'municipio': values[7]
+                    'telefone': values[3],
+                    'endereco': values[4],
+                    'responsavel': values[5]
                 }
                 empresas_selecionadas.append(empresa_data)
 
@@ -752,12 +721,9 @@ class PDFillerApp:
                         'cnpj': cnpj_formatted,
                         'razao_social': razao_social or '',
                         'nome_fantasia': nome_fantasia or '',
-                        'email': email or '',
                         'telefone': telefone or '',
-                        'celular': celular or '',
-                        'responsavel': '', # Responsável não está na tabela de empresas
                         'endereco': endereco or '',
-                        'municipio': municipio or '',
+                        'responsavel': responsavel or '',
                         'data_feriado': data_feriado
                     }
 
@@ -814,7 +780,7 @@ class PDFillerApp:
             
             # Pesquisar por CNPJ (exato) ou razão social/nome fantasia (parcial)
             cursor.execute("""
-                SELECT cnpj, razao_social, nome_fantasia, email, telefone, celular, endereco, cidade
+                SELECT cnpj, razao_social, nome_fantasia, telefone, endereco, responsavel
                 FROM empresas 
                 WHERE REPLACE(REPLACE(REPLACE(cnpj, ".", ""), "/", ""), "-", "") LIKE ? 
                    OR UPPER(razao_social) LIKE UPPER(?) 
@@ -839,22 +805,17 @@ class PDFillerApp:
                 
                 razao_social = result[1] or ''
                 nome_fantasia = result[2] or ''
-                email = result[3] or ''
-                telefone = str(result[4]).replace('.0', '') if result[4] else ''
-                celular = str(result[5]).replace('.0', '') if result[5] else ''
-                endereco = result[6] or ''
-                municipio = result[7] or ''
+                telefone = str(result[3]).replace(".0", "") if result[3] else ""
+                endereco = result[4] or ""
+                responsavel = result[5] or ""
                 
                 # Preencher os campos da interface
                 self.cnpj_var.set(cnpj_formatted)
                 self.razao_social_var.set(razao_social)
                 self.nome_fantasia_var.set(nome_fantasia)
-                self.email_var.set(email)
                 self.telefone_var.set(telefone)
-                self.celular_var.set(celular)
                 self.endereco_var.set(endereco)
-                self.municipio_var.set(municipio)
-                # Limpar campo de pesquisa
+                self.responsavel_var.set(responsavel)                # Limpar campo de pesquisa
                 self.search_term_var.set("")
                 
                 # Mostrar mensagem de sucesso
@@ -892,7 +853,7 @@ class PDFillerApp:
             cursor = conn.cursor()
             
             cursor.execute("""
-                SELECT cnpj, razao_social, nome_fantasia, email, telefone, celular, endereco, cidade
+                SELECT cnpj, razao_social, nome_fantasia, telefone, endereco, responsavel
                 FROM empresas 
                 ORDER BY razao_social
             """)
@@ -946,7 +907,7 @@ class PDFillerApp:
             
             # Construir query com filtros
             query = """
-                SELECT cnpj, razao_social, nome_fantasia, email, telefone, celular, endereco, cidade
+                SELECT cnpj, razao_social, nome_fantasia, telefone, endereco, responsavel
                 FROM empresas 
                 WHERE 1=1
             """
@@ -1007,7 +968,7 @@ class PDFillerApp:
             
             # Construir query com filtros
             query = """
-                SELECT cnpj, razao_social, nome_fantasia, email, telefone, celular, endereco, cidade
+                SELECT cnpj, razao_social, nome_fantasia, telefone, endereco, responsavel
                 FROM empresas 
                 WHERE 1=1
             """
