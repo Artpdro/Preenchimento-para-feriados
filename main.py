@@ -190,11 +190,27 @@ class PDFillerApp:
         header_label.pack(pady=8)
 
         # Frame principal para o conteúdo
-        main_content_frame = tk.Frame(individual_frame, bg=self.colors["light_gray"])
+        main_content_frame = ttk.Frame(individual_frame, style="TFrame")
         main_content_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
+        # Criar um Canvas para o conteúdo rolável
+        canvas = tk.Canvas(main_content_frame, bg=self.colors["light_gray"])
+        canvas.pack(side="left", fill="both", expand=True)
+
+        # Adicionar um scrollbar ao Canvas
+        scrollbar = ttk.Scrollbar(main_content_frame, orient="vertical", command=canvas.yview)
+        scrollbar.pack(side="right", fill="y")
+
+        # Configurar o Canvas para usar o scrollbar
+        canvas.configure(yscrollcommand=scrollbar.set)
+        canvas.bind("<Configure>", lambda e: canvas.configure(scrollregion = canvas.bbox("all")))
+
+        # Criar um frame dentro do Canvas para conter todos os widgets
+        scrollable_frame = ttk.Frame(canvas, style="TFrame")
+        canvas.create_window((0, 0), window=scrollable_frame, anchor="nw")
+
         # Frame para pesquisa de empresas
-        search_frame = ttk.LabelFrame(main_content_frame, text="Pesquisar Empresa")
+        search_frame = ttk.LabelFrame(scrollable_frame, text="Pesquisar Empresa")
         search_frame.pack(padx=10, pady=10, fill="x")
         search_frame.columnconfigure(1, weight=1)
 
@@ -212,7 +228,7 @@ class PDFillerApp:
         search_entry.bind('<Return>', lambda event: self.search_and_fill_company())
 
         # Frame para os campos de entrada
-        input_frame = ttk.LabelFrame(main_content_frame, text="Dados para Preenchimento")
+        input_frame = ttk.LabelFrame(scrollable_frame, text="Dados para Preenchimento")
         input_frame.pack(padx=10, pady=10, fill="x")
         input_frame.columnconfigure(1, weight=1)
 
@@ -254,7 +270,7 @@ class PDFillerApp:
         ttk.Entry(input_frame, textvariable=self.data_feriado_var, width=60).grid(row=9, column=1, padx=10, pady=5, sticky="ew")
 
         # Frame para botões CRUD
-        crud_frame = ttk.LabelFrame(main_content_frame, text="Gerenciar Empresas")
+        crud_frame = ttk.LabelFrame(scrollable_frame, text="Gerenciar Empresas")
         crud_frame.pack(padx=10, pady=10, fill="x")
 
         # Botões CRUD
@@ -272,7 +288,7 @@ class PDFillerApp:
         
 
         # Frame para seleção de arquivos
-        file_frame = ttk.LabelFrame(main_content_frame, text="Seleção de Arquivos")
+        file_frame = ttk.LabelFrame(scrollable_frame, text="Seleção de Arquivos")
         file_frame.pack(padx=10, pady=10, fill="x")
         file_frame.columnconfigure(1, weight=1)
 
@@ -282,13 +298,10 @@ class PDFillerApp:
         ttk.Button(file_frame, text="Selecionar Pasta", command=self.select_output_dir).grid(row=0, column=2, padx=10, pady=5)
 
         # Botão de Preenchimento
-        fill_button = ttk.Button(main_content_frame, text="Preencher PDF", command=self.fill_pdf)
-        fill_button.pack(pady=10)
-
+        fill_button = ttk.Button(scrollable_frame, text="Preencher PDF", command=self.fill_pdf)
         # Frame para a tabela de empresas
-        table_frame = ttk.LabelFrame(main_content_frame, text="Empresas Cadastradas")
+        table_frame = ttk.LabelFrame(individual_frame, text="Empresas Cadastradas")
         table_frame.pack(padx=10, pady=10, fill="both", expand=True)
-
         # Criar a tabela (Treeview)
         columns = ("CNPJ", "Razão Social", "Nome Fantasia", "Telefone", "Endereço", "Responsável")
         self.tree = ttk.Treeview(table_frame, columns=columns, show="headings", height=15)
