@@ -398,16 +398,24 @@ class PDFillerApp:
                 self.batch_tree.column(col, width=120, minwidth=100)
             elif col == "Nome Fantasia":
                 self.batch_tree.column(col, width=100, minwidth=80)
-            elif col == "Email":
-                self.batch_tree.column(col, width=120, minwidth=100)
-            elif col == "Telefone":
-                self.batch_tree.column(col, width=80, minwidth=60)
-            elif col == "Celular":
-                self.batch_tree.column(col, width=80, minwidth=60)
-            elif col == "Endereço":
-                self.batch_tree.column(col, width=150, minwidth=120)
-            elif col == "Município":
-                self.batch_tree.column(col, width=100, minwidth=80)
+
+        # Scrollbars para a tabela de lote
+        batch_v_scrollbar = ttk.Scrollbar(batch_table_frame, orient="vertical", command=self.batch_tree.yview)
+        batch_h_scrollbar = ttk.Scrollbar(batch_table_frame, orient="horizontal", command=self.batch_tree.xview)
+        self.batch_tree.configure(yscrollcommand=batch_v_scrollbar.set, xscrollcommand=batch_h_scrollbar.set)
+
+        # Posicionar tabela e scrollbars
+        self.batch_tree.grid(row=0, column=0, sticky="nsew")
+        batch_v_scrollbar.grid(row=0, column=1, sticky="ns")
+        batch_h_scrollbar.grid(row=1, column=0, sticky="ew")
+
+        # Configurar expansão do grid
+        batch_table_frame.grid_rowconfigure(0, weight=1)
+        batch_table_frame.grid_columnconfigure(0, weight=1)
+
+        # Bind para seleção de linha na tabela de lote
+        self.batch_tree.bind("<<TreeviewSelect>>", self.on_company_select)
+
 
         # Scrollbars para a tabela de lote
         batch_v_scrollbar = ttk.Scrollbar(batch_table_frame, orient="vertical", command=self.batch_tree.yview)
@@ -880,8 +888,8 @@ class PDFillerApp:
                     company[3] or '',  # email
                     str(company[4]).replace('.0', '') if company[4] else '',  # telefone
                     str(company[5]).replace('.0', '') if company[5] else '',  # celular
-                    company[6] or '',  # endereco
-                    company[7] or ''   # cidade
+                    company[6] if len(company) > 6 and company[6] is not None else 
+                    company[7] if len(company) > 7 and company[7] is not None else ''   # cidade
                 )
                 self.tree.insert('', 'end', values=values)
                 self.batch_tree.insert('', 'end', values=values)
@@ -942,8 +950,8 @@ class PDFillerApp:
                     company[3] or '',  # email
                     str(company[4]).replace('.0', '') if company[4] else '',  # telefone
                     str(company[5]).replace('.0', '') if company[5] else '',  # celular
-                    company[6] or '',  # endereco
-                    company[7] or ''   # cidade
+                    company[6] if len(company) > 6 and company[6] is not None else 
+                    company[7] if len(company) > 7 and company[7] is not None else ''   # cidade
                 )
                 self.tree.insert('', 'end', values=values)
             
@@ -1003,8 +1011,8 @@ class PDFillerApp:
                     company[3] or '',  # email
                     str(company[4]).replace('.0', '') if company[4] else '',  # telefone
                     str(company[5]).replace('.0', '') if company[5] else '',  # celular
-                    company[6] or '',  # endereco
-                    company[7] or ''   # cidade
+                    company[6] if len(company) > 6 and company[6] is not None else 
+                    company[7] if len(company) > 7 and company[7] is not None else ''   # cidade
                 )
                 self.batch_tree.insert('', 'end', values=values)
             
