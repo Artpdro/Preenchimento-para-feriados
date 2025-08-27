@@ -72,13 +72,24 @@ class PDFillerApp:
 
         # Estilo para botão de preenchimento em lote
         style.configure("Batch.TButton", 
-                        font=("Arial", 10, "bold"), 
-                        padding=5, 
+                        font=("Arial", 12, "bold"), 
+                        padding=10, 
                         background='#FF6B35', 
                         foreground=self.colors['white'],
                         relief="flat")
         style.map("Batch.TButton", 
                   background=[('active', '#E55A2B')],
+                  foreground=[('active', self.colors['white'])])
+
+        # Estilo para botão de filtro de município
+        style.configure("Municipality.TButton", 
+                        font=("Arial", 10, "bold"), 
+                        padding=5, 
+                        background='#17a2b8', 
+                        foreground=self.colors['white'],
+                        relief="flat")
+        style.map("Municipality.TButton", 
+                  background=[('active', '#138496')],
                   foreground=[('active', self.colors['white'])])
 
         # Estilos para botões CRUD
@@ -349,7 +360,7 @@ class PDFillerApp:
         filter_razao_social_entry.pack(side="left", padx=5)
 
     def create_batch_tab(self):
-        """Cria a aba de preenchimento em lote"""
+        """Cria a aba de preenchimento em lote com scrollbox"""
         # Frame para a aba de lote
         batch_frame = ttk.Frame(self.notebook)
         self.notebook.add(batch_frame, text="Preenchimento em Lote")
@@ -365,12 +376,39 @@ class PDFillerApp:
                                 bg=self.colors['primary_blue'])
         header_label.pack(pady=8)
 
-        # Frame principal para o conteúdo
-        main_content_frame = tk.Frame(batch_frame, bg=self.colors["light_gray"])
+        # Frame principal para o conteúdo com scrollbox
+        main_content_frame = ttk.Frame(batch_frame, style="TFrame")
         main_content_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
+        # Criar um Canvas para o conteúdo rolável
+        batch_canvas = tk.Canvas(main_content_frame, bg=self.colors["light_gray"])
+        batch_canvas.pack(side="left", fill="both", expand=True)
+
+        # Adicionar um scrollbar ao Canvas
+        batch_scrollbar = ttk.Scrollbar(main_content_frame, orient="vertical", command=batch_canvas.yview)
+        batch_scrollbar.pack(side="right", fill="y")
+
+        # Configurar o Canvas para usar o scrollbar
+        batch_canvas.configure(yscrollcommand=batch_scrollbar.set)
+        
+        # Função para atualizar a região de scroll
+        def configure_scroll_region(event):
+            batch_canvas.configure(scrollregion=batch_canvas.bbox("all"))
+        
+        batch_canvas.bind("<Configure>", configure_scroll_region)
+
+        # Criar um frame dentro do Canvas para conter todos os widgets
+        batch_scrollable_frame = ttk.Frame(batch_canvas, style="TFrame")
+        batch_canvas.create_window((0, 0), window=batch_scrollable_frame, anchor="nw")
+
+        # Bind para scroll com mouse wheel
+        def on_mousewheel(event):
+            batch_canvas.yview_scroll(int(-1*(event.delta/120)), "units")
+        
+        batch_canvas.bind("<MouseWheel>", on_mousewheel)
+
         # Frame para configuração do lote
-        batch_config_frame = ttk.LabelFrame(main_content_frame, text="Configuração do Preenchimento em Lote")
+        batch_config_frame = ttk.LabelFrame(batch_scrollable_frame, text="Configuração do Preenchimento em Lote")
         batch_config_frame.pack(padx=10, pady=10, fill="x")
         batch_config_frame.columnconfigure(1, weight=1)
 
@@ -383,18 +421,37 @@ class PDFillerApp:
         ttk.Label(batch_config_frame, text="(Formato: DD/MM/AAAA)", 
                  font=("Arial", 8), foreground=self.colors['dark_gray']).grid(row=1, column=1, sticky="w", padx=10)
 
-        # NOVO: Filtro de Município
-        ttk.Label(batch_config_frame, text="Selecione o MUNICÍPIO:").grid(row=2, column=0, sticky="w", padx=10, pady=5)
-        self.municipio_combobox = ttk.Combobox(batch_config_frame, textvariable=self.batch_filter_municipio_var, 
-                                               width=57, state="readonly")
-        self.municipio_combobox.grid(row=2, column=1, padx=10, pady=5, sticky="ew")
-        self.municipio_combobox.bind("<<ComboboxSelected>>", self.filter_batch_companies_by_municipio)
+        # MELHORADO: Filtro de Município com botão de aplicar
+        municipality_frame = ttk.LabelFrame(batch_config_frame, text="Filtro por Município")
+        municipality_frame.grid(row=2, column=0, columnspan=2, sticky="ew", padx=10, pady=10)
+        municipality_frame.columnconfigure(1, weight=1)
+
+        ttk.Label(municipality_frame, text="Selecione o MUNICÍPIO:").grid(row=0, column=0, sticky="w", padx=10, pady=5)
+        self.municipio_combobox = ttk.Combobox(municipality_frame, textvariable=self.batch_filter_municipio_var, 
+                                               width=40, state="readonly")
+        self.municipio_combobox.grid(row=0, column=1, padx=10, pady=5, sticky="ew")
+        
+        # Botão para aplicar filtro de município
+        apply_municipality_button = ttk.Button(municipality_frame, text="Aplicar Filtro", 
+                                             command=self.apply_municipality_filter, 
+                                             style="Municipality.TButton")
+        apply_municipality_button.grid(row=0, column=2, padx=10, pady=5)
+
+        # Botão para limpar filtro de município
+        clear_municipality_button = ttk.Button(municipality_frame, text="Limpar Filtro", 
+                                             command=self.clear_municipality_filter)
+        clear_municipality_button.grid(row=0, column=3, padx=5, pady=5)
+
+        # Label para mostrar o filtro ativo
+        self.municipality_status_label = ttk.Label(municipality_frame, text="Filtro: Todos os municípios", 
+                                                  font=("Arial", 9), foreground=self.colors['dark_blue'])
+        self.municipality_status_label.grid(row=1, column=0, columnspan=4, sticky="w", padx=10, pady=2)
         
         # Carregar municípios no combobox
         self.load_municipios()
 
         # Frame para seleção de diretório de saída
-        batch_file_frame = ttk.LabelFrame(main_content_frame, text="Local para Salvar")
+        batch_file_frame = ttk.LabelFrame(batch_scrollable_frame, text="Local para Salvar")
         batch_file_frame.pack(padx=10, pady=10, fill="x")
         batch_file_frame.columnconfigure(1, weight=1)
 
@@ -404,12 +461,12 @@ class PDFillerApp:
         ttk.Button(batch_file_frame, text="Selecionar Pasta", command=self.select_batch_output_dir).grid(row=0, column=2, padx=10, pady=5)
 
         # Frame para a tabela de empresas no modo lote
-        batch_table_frame = ttk.LabelFrame(main_content_frame, text="Empresas Cadastradas (Selecione para Preencher)")
+        batch_table_frame = ttk.LabelFrame(batch_scrollable_frame, text="Empresas Cadastradas (Selecione para Preencher)")
         batch_table_frame.pack(padx=10, pady=10, fill="both", expand=True)
 
         # Criar a tabela (Treeview) para seleção em lote
         columns = ("CNPJ", "Razão Social", "Nome Fantasia", "Telefone", "Endereço", "Responsável", "Município")
-        self.batch_tree = ttk.Treeview(batch_table_frame, columns=columns, show="headings", height=10, selectmode="extended")
+        self.batch_tree = ttk.Treeview(batch_table_frame, columns=columns, show="headings", height=8, selectmode="extended")
         
         # Configurar cabeçalhos
         for col in columns:
@@ -454,16 +511,24 @@ class PDFillerApp:
         batch_filter_razao_social_entry.pack(side="left", padx=5)
 
         # Botões para seleção em lote
-        batch_selection_frame = tk.Frame(main_content_frame, bg=self.colors["light_gray"])
+        batch_selection_frame = tk.Frame(batch_scrollable_frame, bg=self.colors["light_gray"])
         batch_selection_frame.pack(pady=10)
 
         ttk.Button(batch_selection_frame, text="Selecionar Todas", command=self.select_all_companies).pack(side="left", padx=5)
         ttk.Button(batch_selection_frame, text="Desmarcar Todas", command=self.deselect_all_companies).pack(side="left", padx=5)
 
-        # Botão de Preenchimento em Lote
-        batch_fill_button = ttk.Button(main_content_frame, text="Preencher PDFs em Lote", 
+        # BOTÃO DE PREENCHIMENTO EM LOTE - SEMPRE VISÍVEL
+        batch_fill_frame = tk.Frame(batch_scrollable_frame, bg=self.colors["light_gray"], height=80)
+        batch_fill_frame.pack(pady=20, fill="x")
+        batch_fill_frame.pack_propagate(False)
+
+        batch_fill_button = ttk.Button(batch_fill_frame, text="🚀 PREENCHER PDFs EM LOTE 🚀", 
                                       command=self.fill_batch_pdfs, style="Batch.TButton")
-        batch_fill_button.pack(pady=10)
+        batch_fill_button.pack(pady=15, expand=True)
+
+        # Atualizar a região de scroll após adicionar todos os widgets
+        batch_scrollable_frame.update_idletasks()
+        batch_canvas.configure(scrollregion=batch_canvas.bbox("all"))
 
     def load_municipios(self):
         """Carrega os municípios únicos do banco de dados no combobox"""
@@ -485,9 +550,40 @@ class PDFillerApp:
         except sqlite3.Error as e:
             messagebox.showerror("Erro", f"Erro ao carregar municípios: {e}")
 
-    def filter_batch_companies_by_municipio(self, event=None):
-        """Filtra as empresas na tabela de lote por município selecionado"""
+    def apply_municipality_filter(self):
+        """Aplica o filtro de município selecionado"""
+        municipio_selecionado = self.batch_filter_municipio_var.get()
+        
+        if not municipio_selecionado:
+            messagebox.showwarning("Aviso", "Por favor, selecione um município!")
+            return
+        
+        # Atualizar o label de status
+        if municipio_selecionado == "Todos os municípios":
+            self.municipality_status_label.config(text="Filtro: Todos os municípios")
+        else:
+            self.municipality_status_label.config(text=f"Filtro ativo: {municipio_selecionado}")
+        
+        # Aplicar o filtro
         self.load_batch_companies()
+        
+        # Mostrar mensagem de confirmação
+        if municipio_selecionado == "Todos os municípios":
+            messagebox.showinfo("Filtro Aplicado", "Exibindo empresas de todos os municípios.")
+        else:
+            # Contar quantas empresas foram filtradas
+            total_empresas = len(self.batch_tree.get_children())
+            messagebox.showinfo("Filtro Aplicado", 
+                              f"Filtro aplicado para o município: {municipio_selecionado}\n"
+                              f"Total de empresas encontradas: {total_empresas}")
+
+    def clear_municipality_filter(self):
+        """Limpa o filtro de município"""
+        self.municipio_combobox.set("Todos os municípios")
+        self.batch_filter_municipio_var.set("Todos os municípios")
+        self.municipality_status_label.config(text="Filtro: Todos os municípios")
+        self.load_batch_companies()
+        messagebox.showinfo("Filtro Limpo", "Filtro de município removido. Exibindo todas as empresas.")
 
     def load_batch_companies(self):
         """Carrega as empresas do banco de dados na tabela de lote, aplicando filtro de município"""
@@ -891,70 +987,50 @@ class PDFillerApp:
                 cnpj = str(result[0]).replace('.0', '') if result[0] else ''
                 cnpj_formatted = format_cnpj(cnpj) if cnpj else ''
                 
-                razao_social = result[1] or ''
-                nome_fantasia = result[2] or ''
-                telefone = str(result[3]).replace(".0", "") if result[3] else ""
-                endereco = result[4] or ""
-                responsavel = result[5] or ""
-                
-                # Preencher os campos da interface
                 self.cnpj_var.set(cnpj_formatted)
-                self.razao_social_var.set(razao_social)
-                self.nome_fantasia_var.set(nome_fantasia)
-                self.telefone_var.set(telefone)
-                self.endereco_var.set(endereco)
-                self.responsavel_var.set(responsavel)
+                self.razao_social_var.set(result[1] or '')
+                self.nome_fantasia_var.set(result[2] or '')
+                self.telefone_var.set(str(result[3]).replace('.0', '') if result[3] else '')
+                self.endereco_var.set(result[4] or '')
+                self.responsavel_var.set(result[5] or '')
                 
-                # Limpar campo de pesquisa
-                self.search_term_var.set("")
-                
-                # Mostrar mensagem de sucesso
-                messagebox.showinfo("Sucesso", f"Empresa encontrada: {razao_social}")
-                
-                # Destacar a empresa na tabela se estiver visível
-                self.highlight_company_in_table(cnpj_formatted)
-                
+                messagebox.showinfo("Empresa Encontrada", f"Dados da empresa '{result[1]}' foram preenchidos automaticamente!")
             else:
-                messagebox.showwarning("Não encontrado", 
-                                     f"Nenhuma empresa encontrada com o termo: {search_term}")
+                messagebox.showwarning("Não Encontrado", "Nenhuma empresa encontrada com os critérios informados.")
             
             conn.close()
             
         except sqlite3.Error as e:
             messagebox.showerror("Erro", f"Erro ao pesquisar empresa: {e}")
 
-    def highlight_company_in_table(self, cnpj):
-        """Destaca a empresa na tabela se ela estiver visível"""
-        try:
-            for item in self.tree.get_children():
-                values = self.tree.item(item)['values']
-                if values and str(values[0]) == cnpj:
-                    self.tree.selection_set(item)
-                    self.tree.focus(item)
-                    self.tree.see(item)
-                    break
-        except Exception as e:
-            print(f"Erro ao destacar empresa na tabela: {e}")
+    def on_company_select(self, event):
+        """Manipula a seleção de uma empresa na tabela"""
+        selection = self.tree.selection()
+        if selection:
+            item = self.tree.item(selection[0])
+            values = item['values']
+            
+            # Preencher os campos com os dados da empresa selecionada
+            self.cnpj_var.set(values[0])
+            self.razao_social_var.set(values[1])
+            self.nome_fantasia_var.set(values[2])
+            self.telefone_var.set(values[3])
+            self.endereco_var.set(values[4])
+            self.responsavel_var.set(values[5])
 
     def load_companies(self):
-        """Carrega as empresas do banco de dados na tabela individual e na tabela de lote"""
+        """Carrega as empresas do banco de dados na tabela"""
+        # Limpar tabela
+        for item in self.tree.get_children():
+            self.tree.delete(item)
+        
         try:
             conn = sqlite3.connect('empresas.db')
             cursor = conn.cursor()
-            
-            cursor.execute("""
-                SELECT cnpj, razao_social, nome_fantasia, telefone, endereco, responsavel
-                FROM empresas 
-                ORDER BY razao_social
-            """)
-            
+            cursor.execute("SELECT cnpj, razao_social, nome_fantasia, telefone, endereco, responsavel FROM empresas ORDER BY razao_social")
             companies = cursor.fetchall()
             
-            # Limpar tabela individual existente
-            for item in self.tree.get_children():
-                self.tree.delete(item)
-            
-            # Adicionar empresas na tabela individual
+            # Adicionar empresas na tabela
             for company in companies:
                 cnpj = str(company[0]).replace('.0', '') if company[0] else ''
                 cnpj_formatted = format_cnpj(cnpj) if cnpj else ''
@@ -970,29 +1046,13 @@ class PDFillerApp:
                     telefone, endereco, responsavel
                 ))
             
-            # Carregar empresas na tabela de lote (com filtro de município)
-            self.load_batch_companies()
-            
             conn.close()
+            
+            # Também carregar na tabela de lote
+            self.load_batch_companies()
             
         except sqlite3.Error as e:
             messagebox.showerror("Erro", f"Erro ao carregar empresas: {e}")
-
-    def on_company_select(self, event):
-        """Manipula a seleção de uma empresa na tabela"""
-        selection = event.widget.selection()
-        if selection:
-            item = event.widget.item(selection[0])
-            values = item['values']
-            
-            if len(values) >= 6:  # Verificar se há dados suficientes
-                # Preencher os campos com os dados da empresa selecionada
-                self.cnpj_var.set(values[0])
-                self.razao_social_var.set(values[1])
-                self.nome_fantasia_var.set(values[2])
-                self.telefone_var.set(values[3])
-                self.endereco_var.set(values[4])
-                self.responsavel_var.set(values[5])
 
     def filter_companies(self, *args):
         """Filtra as empresas na tabela individual"""
