@@ -850,7 +850,8 @@ class PDFillerApp:
                     'nome_fantasia': values[2],
                     'telefone': values[3],
                     'endereco': values[4],
-                    'responsavel': values[5]
+                    'responsavel': values[5],
+                    'municipio': values[6]
                 }
                 empresas_selecionadas.append(empresa_data)
 
